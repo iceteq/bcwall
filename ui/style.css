@@ -353,9 +353,8 @@ body {
   color: var(--ink);
 }
 
-.toolbar-input:focus {
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(47, 93, 80, 0.22);
+.toolbar-input:disabled {
+  opacity: 0.45;
 }
 
 .tool-toggle {

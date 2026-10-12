@@ -28,6 +28,7 @@
   const pageCountEl = document.getElementById("pageCount");
   const pageTitleInput = document.getElementById("pageTitleInput");
   const footerInput = document.getElementById("footerInput");
+  const showFooterToggle = document.getElementById("showFooterToggle");
   const showTitlesToggle = document.getElementById("showTitlesToggle");
   const titleSizeSelect = document.getElementById("titleSizeSelect");
   const captionSizeSelect = document.getElementById("captionSizeSelect");
@@ -201,6 +202,10 @@
     return getCaptionSize() === "large";
   }
 
+  function showFooter() {
+    return !!showFooterToggle.checked;
+  }
+
   function vCenter() {
     return !!vCenterToggle.checked;
   }
@@ -222,6 +227,7 @@
       if (s.perPage) perPageInput.value = String(s.perPage);
       if (typeof s.pageTitle === "string") pageTitleInput.value = s.pageTitle;
       if (typeof s.footer === "string") footerInput.value = s.footer;
+      if (typeof s.showFooter === "boolean") showFooterToggle.checked = s.showFooter;
       if (typeof s.showTitles === "boolean") showTitlesToggle.checked = s.showTitles;
       if (s.titleSize === "large" || s.titleSize === "regular") {
         titleSizeSelect.value = s.titleSize;
@@ -248,6 +254,7 @@
       perPage: getPerPage(),
       pageTitle: pageTitleInput.value,
       footer: footerInput.value,
+      showFooter: showFooter(),
       showTitles: showTitles(),
       titleSize: getTitleSize(),
       captionSize: getCaptionSize(),
@@ -307,6 +314,10 @@
     document.querySelectorAll(".seg[data-size]").forEach((btn) => {
       btn.classList.toggle("is-active", btn.getAttribute("data-size") === mode);
     });
+  }
+
+  function syncFooterControl() {
+    footerInput.disabled = !showFooter();
   }
 
   function syncTextSizeSegments() {
@@ -858,6 +869,7 @@
     const pages = usable.length ? Math.ceil(usable.length / perPage) : 0;
     const titlesOn = showTitles();
     const pageTitle = pageTitleInput.value.trim();
+    const footerOn = showFooter();
     const footer = footerInput.value.trim() || "BarCode Anywhere - Anton";
     const dateStamp = formatDateStamp();
 
@@ -1000,12 +1012,14 @@
 
       sheet.appendChild(grid);
 
-      const foot = document.createElement("div");
-      foot.className = "sheet-footer";
-      foot.innerHTML =
-        `<span>${escapeHtml(footer)}</span>` +
-        `<span class="sheet-footer-date">${escapeHtml(dateStamp)} · <strong>${p + 1}</strong> / ${pages}</span>`;
-      sheet.appendChild(foot);
+      if (footerOn) {
+        const foot = document.createElement("div");
+        foot.className = "sheet-footer";
+        foot.innerHTML =
+          `<span>${escapeHtml(footer)}</span>` +
+          `<span class="sheet-footer-date">${escapeHtml(dateStamp)} · <strong>${p + 1}</strong> / ${pages}</span>`;
+        sheet.appendChild(foot);
+      }
 
       previewEl.appendChild(sheet);
     }
@@ -1025,6 +1039,7 @@
     syncOrientSegments();
     syncSizeSegments();
     syncTextSizeSegments();
+    syncFooterControl();
     syncDocumentClasses();
     renderEditor();
     refreshPrintPreviewOnly();
@@ -1152,6 +1167,11 @@
     refreshPrintPreviewOnly();
   });
   footerInput.addEventListener("input", () => {
+    saveSettings();
+    refreshPrintPreviewOnly();
+  });
+  showFooterToggle.addEventListener("change", () => {
+    syncFooterControl();
     saveSettings();
     refreshPrintPreviewOnly();
   });
