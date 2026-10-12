@@ -1,0 +1,8 @@
+{
+  "name": "bcwall",
+  "compatibility_date": "2026-10-12",
+  "assets": {
+    "directory": ".",
+    "html_handling": "auto-trailing-slash"
+  }
+}
