@@ -1084,6 +1084,9 @@ body {
   font-size: 18pt;
   line-height: 1.12;
   letter-spacing: -0.015em;
+  /* Size to the words. A fixed two-line slot at 18pt leaves a tall gap above a one-line title. */
+  height: auto;
+  min-height: 0;
 }
 
 .sheet.is-fit.is-title-lg .sheet-cell-title,

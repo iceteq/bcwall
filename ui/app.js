@@ -489,7 +489,7 @@
   function largeTextReserveMm(titleLarge, captionLarge) {
     // Extra height beyond the regular ~10pt title slot and ~8.5pt caption.
     let extra = 0;
-    if (titleLarge) extra += 7;
+    if (titleLarge) extra += 3;
     if (captionLarge) extra += 8;
     return extra;
   }
