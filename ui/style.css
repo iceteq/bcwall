@@ -324,6 +324,14 @@ body {
   min-width: 180px;
 }
 
+.tool-group.is-disabled {
+  opacity: 0.4;
+}
+
+.tool-group.is-disabled .seg {
+  cursor: default;
+}
+
 .tool-label {
   font-size: 12px;
   font-weight: 600;
@@ -879,6 +887,7 @@ body {
 }
 
 .sheet-cell {
+  --after-title: -1.25mm;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -898,6 +907,7 @@ body {
 }
 
 .sheet.paper-zebra105 .sheet-cell {
+  --after-title: -0.75mm;
   padding: 2mm 1mm;
   gap: 1.6mm;
 }
@@ -908,22 +918,35 @@ body {
 }
 
 .sheet-cell-title {
-  margin: 0;
+  margin: 0 0 var(--after-title);
   font-family: var(--font-ui);
   font-size: 10pt;
   font-weight: 650;
   text-align: center;
   color: #1c1915;
-  line-height: 1.2;
+  line-height: 1.15;
   width: 100%;
   max-width: 100%;
   height: 2.4em;
   overflow: hidden;
   word-break: break-word;
+  /* The two-line slot stays so barcodes in a row line up.
+     Text sits on the bottom edge, against the bars. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.sheet-cell-title span {
   display: -webkit-box;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  word-break: break-word;
 }
 
 .sheet.paper-zebra105 .sheet-cell-title {
@@ -994,13 +1017,20 @@ body {
 }
 
 .sheet.is-fit .sheet-cell {
+  --after-title: -1.15mm;
   padding: 3mm 2.5mm;
   gap: 2mm;
 }
 
 .sheet.is-semi .sheet-cell {
+  --after-title: -1.45mm;
   padding: 3mm 3mm;
   gap: 2.4mm;
+}
+
+.sheet.paper-zebra105.is-fit .sheet-cell,
+.sheet.paper-zebra105.is-semi .sheet-cell {
+  --after-title: -0.85mm;
 }
 
 .sheet.is-fit .sheet-cell-bars,
@@ -1034,6 +1064,74 @@ body {
   color: #6e675e;
   max-width: 100%;
   line-height: 1.25;
+  flex-shrink: 0;
+}
+
+/* Large type is 18pt. Title and caption are independent, including both at once.
+   In a fitted cell, container query units yield a little when the slot is too short. */
+.sheet.is-fit .sheet-cell,
+.sheet.is-semi .sheet-cell {
+  container-type: size;
+}
+
+.sheet.is-title-lg .sheet-cell-title,
+.sheet.is-title-lg.is-fit .sheet-cell-title,
+.sheet.is-title-lg.is-semi .sheet-cell-title,
+.sheet.is-title-lg.is-fit.is-fit-hero .sheet-cell-title,
+.sheet.is-title-lg.paper-zebra105 .sheet-cell-title,
+.sheet.is-title-lg.is-fit.paper-zebra105 .sheet-cell-title,
+.sheet.is-title-lg.is-semi.paper-zebra105 .sheet-cell-title {
+  font-size: 18pt;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+}
+
+.sheet.is-fit.is-title-lg .sheet-cell-title,
+.sheet.is-semi.is-title-lg .sheet-cell-title,
+.sheet.is-title-lg.is-fit.is-fit-hero .sheet-cell-title,
+.sheet.is-title-lg.is-fit.paper-zebra105 .sheet-cell-title,
+.sheet.is-title-lg.is-semi.paper-zebra105 .sheet-cell-title {
+  font-size: min(18pt, 26cqh);
+}
+
+.sheet.is-caption-lg .sheet-cell-label,
+.sheet.is-caption-lg.is-fit .sheet-cell-label,
+.sheet.is-caption-lg.is-semi .sheet-cell-label,
+.sheet.is-caption-lg.is-fit.is-fit-hero .sheet-cell-label,
+.sheet.is-caption-lg.paper-zebra105 .sheet-cell-label,
+.sheet.is-caption-lg.is-fit.paper-zebra105 .sheet-cell-label,
+.sheet.is-caption-lg.is-semi.paper-zebra105 .sheet-cell-label,
+.sheet.is-caption-lg .sheet-grid.cols-3 .sheet-cell-label,
+.sheet.is-caption-lg .sheet-grid.cols-4 .sheet-cell-label {
+  font-size: 18pt;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  color: #2c2823;
+}
+
+.sheet.is-fit.is-caption-lg .sheet-cell-label,
+.sheet.is-semi.is-caption-lg .sheet-cell-label,
+.sheet.is-caption-lg.is-fit.is-fit-hero .sheet-cell-label,
+.sheet.is-caption-lg.is-fit.paper-zebra105 .sheet-cell-label,
+.sheet.is-caption-lg.is-semi.paper-zebra105 .sheet-cell-label,
+.sheet.is-fit.is-caption-lg .sheet-grid.cols-3 .sheet-cell-label,
+.sheet.is-fit.is-caption-lg .sheet-grid.cols-4 .sheet-cell-label,
+.sheet.is-semi.is-caption-lg .sheet-grid.cols-3 .sheet-cell-label,
+.sheet.is-semi.is-caption-lg .sheet-grid.cols-4 .sheet-cell-label {
+  font-size: min(18pt, 20cqh);
+}
+
+.sheet.is-title-lg.is-caption-lg .sheet-cell {
+  --after-title: -0.7mm;
+  gap: 1.5mm;
+  padding-block: 2.2mm;
+}
+
+.sheet.is-fit.is-title-lg.is-caption-lg .sheet-cell,
+.sheet.is-semi.is-title-lg.is-caption-lg .sheet-cell {
+  --after-title: -0.85mm;
+  padding-block: 1.6mm;
 }
 
 .sheet.paper-zebra105 .sheet-cell-label {

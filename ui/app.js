@@ -29,6 +29,9 @@
   const pageTitleInput = document.getElementById("pageTitleInput");
   const footerInput = document.getElementById("footerInput");
   const showTitlesToggle = document.getElementById("showTitlesToggle");
+  const titleSizeSelect = document.getElementById("titleSizeSelect");
+  const captionSizeSelect = document.getElementById("captionSizeSelect");
+  const titleSizeGroup = document.getElementById("titleSizeGroup");
   const vCenterToggle = document.getElementById("vCenterToggle");
   const sizeModeSelect = document.getElementById("sizeModeSelect");
   const paperHint = document.getElementById("paperHint");
@@ -182,6 +185,22 @@
     return !!showTitlesToggle.checked;
   }
 
+  function getTitleSize() {
+    return titleSizeSelect.value === "large" ? "large" : "regular";
+  }
+
+  function getCaptionSize() {
+    return captionSizeSelect.value === "large" ? "large" : "regular";
+  }
+
+  function titleIsLarge() {
+    return showTitles() && getTitleSize() === "large";
+  }
+
+  function captionIsLarge() {
+    return getCaptionSize() === "large";
+  }
+
   function vCenter() {
     return !!vCenterToggle.checked;
   }
@@ -204,6 +223,12 @@
       if (typeof s.pageTitle === "string") pageTitleInput.value = s.pageTitle;
       if (typeof s.footer === "string") footerInput.value = s.footer;
       if (typeof s.showTitles === "boolean") showTitlesToggle.checked = s.showTitles;
+      if (s.titleSize === "large" || s.titleSize === "regular") {
+        titleSizeSelect.value = s.titleSize;
+      }
+      if (s.captionSize === "large" || s.captionSize === "regular") {
+        captionSizeSelect.value = s.captionSize;
+      }
       if (typeof s.vCenter === "boolean") vCenterToggle.checked = s.vCenter;
       if (s.sizeMode === "semi" || s.sizeMode === "fit" || s.sizeMode === "normal") {
         sizeModeSelect.value = s.sizeMode;
@@ -224,6 +249,8 @@
       pageTitle: pageTitleInput.value,
       footer: footerInput.value,
       showTitles: showTitles(),
+      titleSize: getTitleSize(),
+      captionSize: getCaptionSize(),
       vCenter: vCenter(),
       sizeMode: getSizeMode(),
     };
@@ -279,6 +306,22 @@
     const mode = getSizeMode();
     document.querySelectorAll(".seg[data-size]").forEach((btn) => {
       btn.classList.toggle("is-active", btn.getAttribute("data-size") === mode);
+    });
+  }
+
+  function syncTextSizeSegments() {
+    const title = getTitleSize();
+    const caption = getCaptionSize();
+    document.querySelectorAll(".seg[data-title-size]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-title-size") === title);
+    });
+    document.querySelectorAll(".seg[data-caption-size]").forEach((btn) => {
+      btn.classList.toggle("is-active", btn.getAttribute("data-caption-size") === caption);
+    });
+    const titlesOn = showTitles();
+    titleSizeGroup.classList.toggle("is-disabled", !titlesOn);
+    titleSizeGroup.querySelectorAll("button").forEach((btn) => {
+      btn.disabled = !titlesOn;
     });
   }
 
@@ -443,7 +486,15 @@
     return Math.max(0.55, Math.round(w * 100) / 100);
   }
 
-  function wallBarHeightMm(rows, mode, paper, landscape) {
+  function largeTextReserveMm(titleLarge, captionLarge) {
+    // Extra height beyond the regular ~10pt title slot and ~8.5pt caption.
+    let extra = 0;
+    if (titleLarge) extra += 7;
+    if (captionLarge) extra += 8;
+    return extra;
+  }
+
+  function wallBarHeightMm(rows, mode, paper, landscape, reserveMm) {
     const fit = mode === "fit";
     let h;
     if (rows <= 1) h = fit ? 42 : 34;
@@ -453,7 +504,12 @@
     else h = fit ? 16 : 14;
     if (landscape) h = Math.round(h * 0.72);
     if (paper === "zebra105") h = Math.round(h * (landscape ? 0.62 : 0.85));
-    return Math.max(12, h);
+    const extra = reserveMm || 0;
+    if (extra) {
+      const take = rows <= 1 ? 0.35 : rows <= 2 ? 0.55 : rows <= 4 ? 0.8 : 1;
+      h -= Math.round(extra * take);
+    }
+    return Math.max(rows >= 6 ? 10 : 12, h);
   }
 
   function barcodeHeightForLayout(countOnPage, columns, landscape, paper) {
@@ -482,12 +538,21 @@
     return 30;
   }
 
-  function barcodeSizeForPage(countOnPage, columns, landscape, paper, mode, valueLen) {
+  function quietBarcodeHeight(baseHeight, rows, titleLarge, captionLarge) {
+    if (!titleLarge && !captionLarge) return baseHeight;
+    let cut = 0;
+    if (titleLarge) cut += rows >= 5 ? 0.1 : 0.04;
+    if (captionLarge) cut += rows >= 5 ? 0.12 : 0.06;
+    return Math.max(26, Math.round(baseHeight * (1 - cut)));
+  }
+
+  function barcodeSizeForPage(countOnPage, columns, landscape, paper, mode, valueLen, textBoost) {
     const rows = Math.max(1, Math.ceil(countOnPage / columns));
     const baseHeight = barcodeHeightForLayout(countOnPage, columns, landscape, paper);
     let width = barcodeWidth(valueLen);
     if (columns >= 4) width = Math.min(width, 1.15);
     else if (columns >= 3) width = Math.min(width, 1.35);
+    const boost = textBoost || { title: false, caption: false };
 
     if (mode === "semi") {
       // Taller bars than the fixed size, still a normal barcode shape.
@@ -496,7 +561,11 @@
     }
 
     if (mode !== "fit") {
-      return { height: baseHeight, width, hero: false };
+      return {
+        height: quietBarcodeHeight(baseHeight, rows, boost.title, boost.caption),
+        width,
+        hero: false,
+      };
     }
 
     // Fill most of the band between title and footer; cap so bars stay scannable.
@@ -771,12 +840,14 @@
     if (!titlesOn) return;
     const t = document.createElement("p");
     t.className = "sheet-cell-title";
+    const span = document.createElement("span");
     if (title) {
-      t.textContent = title;
+      span.textContent = title;
     } else {
-      t.textContent = "\u00a0";
+      span.textContent = "\u00a0";
       t.setAttribute("aria-hidden", "true");
     }
+    t.appendChild(span);
     cell.appendChild(t);
   }
 
@@ -810,6 +881,8 @@
     const sizeMode = getSizeMode();
     const fit = sizeMode === "fit";
     const spread = sizeMode === "fit" || sizeMode === "semi";
+    const textBoost = { title: titleIsLarge(), caption: captionIsLarge() };
+    const textReserve = largeTextReserveMm(textBoost.title, textBoost.caption);
     // Size every page like the first one, so a short last page does not grow its barcodes.
     const layoutCount = Math.min(perPage, usable.length);
     const layoutRows = Math.max(1, Math.ceil(layoutCount / columns));
@@ -822,7 +895,8 @@
         landscape,
         paper,
         sizeMode,
-        24
+        24,
+        textBoost
       );
       const sheet = document.createElement("div");
       sheet.className =
@@ -831,7 +905,9 @@
         (landscape ? " is-landscape" : "") +
         (fit ? " is-fit" : "") +
         (sizeMode === "semi" ? " is-semi" : "") +
-        (fit && pageSize.hero ? " is-fit-hero" : "");
+        (fit && pageSize.hero ? " is-fit-hero" : "") +
+        (textBoost.title ? " is-title-lg" : "") +
+        (textBoost.caption ? " is-caption-lg" : "");
       sheet.style.animationDelay = `${p * 60}ms`;
 
       const header = document.createElement("div");
@@ -851,7 +927,7 @@
       if (spread) {
         grid.style.setProperty(
           "--bar-h",
-          wallBarHeightMm(layoutRows, sizeMode, paper, landscape) + "mm"
+          wallBarHeightMm(layoutRows, sizeMode, paper, landscape, textReserve) + "mm"
         );
       }
 
@@ -867,7 +943,8 @@
               landscape,
               paper,
               sizeMode,
-              encoded.value.length
+              encoded.value.length,
+              textBoost
             )
           : pageSize;
 
@@ -896,7 +973,7 @@
         cell.appendChild(bars);
         try {
           const barMm = spread
-            ? wallBarHeightMm(layoutRows, sizeMode, paper, landscape)
+            ? wallBarHeightMm(layoutRows, sizeMode, paper, landscape, textReserve)
             : 0;
           JsBarcode(svg, encoded.value, {
             format: "CODE128",
@@ -951,6 +1028,7 @@
     syncColumnSegments();
     syncOrientSegments();
     syncSizeSegments();
+    syncTextSizeSegments();
     syncDocumentClasses();
     renderEditor();
     refreshPrintPreviewOnly();
@@ -1084,6 +1162,33 @@
   showTitlesToggle.addEventListener("change", () => {
     saveSettings();
     renderPrintUi();
+  });
+  document.querySelectorAll(".seg[data-title-size]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      titleSizeSelect.value = btn.getAttribute("data-title-size");
+      syncTextSizeSegments();
+      saveSettings();
+      refreshPrintPreviewOnly();
+    });
+  });
+  document.querySelectorAll(".seg[data-caption-size]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      captionSizeSelect.value = btn.getAttribute("data-caption-size");
+      syncTextSizeSegments();
+      saveSettings();
+      refreshPrintPreviewOnly();
+    });
+  });
+  titleSizeSelect.addEventListener("change", () => {
+    syncTextSizeSegments();
+    saveSettings();
+    refreshPrintPreviewOnly();
+  });
+  captionSizeSelect.addEventListener("change", () => {
+    syncTextSizeSegments();
+    saveSettings();
+    refreshPrintPreviewOnly();
   });
   vCenterToggle.addEventListener("change", () => {
     saveSettings();
