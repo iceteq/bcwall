@@ -486,12 +486,10 @@
     return Math.max(0.55, Math.round(w * 100) / 100);
   }
 
-  function largeTextReserveMm(titleLarge, captionLarge) {
-    // Extra height beyond the regular ~10pt title slot and ~8.5pt caption.
-    let extra = 0;
-    if (titleLarge) extra += 3;
-    if (captionLarge) extra += 8;
-    return extra;
+  function largeTextReserveMm(captionLarge) {
+    // A large caption needs bar room in a fitted cell. Title size does not
+    // change the bars, so a regular title stays shorter than a large one.
+    return captionLarge ? 8 : 0;
   }
 
   function wallBarHeightMm(rows, mode, paper, landscape, reserveMm) {
@@ -538,11 +536,9 @@
     return 30;
   }
 
-  function quietBarcodeHeight(baseHeight, rows, titleLarge, captionLarge) {
-    if (!titleLarge && !captionLarge) return baseHeight;
-    let cut = 0;
-    if (titleLarge) cut += rows >= 5 ? 0.1 : 0.04;
-    if (captionLarge) cut += rows >= 5 ? 0.12 : 0.06;
+  function quietBarcodeHeight(baseHeight, rows, captionLarge) {
+    if (!captionLarge) return baseHeight;
+    const cut = rows >= 5 ? 0.12 : 0.06;
     return Math.max(26, Math.round(baseHeight * (1 - cut)));
   }
 
@@ -562,7 +558,7 @@
 
     if (mode !== "fit") {
       return {
-        height: quietBarcodeHeight(baseHeight, rows, boost.title, boost.caption),
+        height: quietBarcodeHeight(baseHeight, rows, boost.caption),
         width,
         hero: false,
       };
@@ -882,7 +878,7 @@
     const fit = sizeMode === "fit";
     const spread = sizeMode === "fit" || sizeMode === "semi";
     const textBoost = { title: titleIsLarge(), caption: captionIsLarge() };
-    const textReserve = largeTextReserveMm(textBoost.title, textBoost.caption);
+    const textReserve = largeTextReserveMm(textBoost.caption);
     // Size every page like the first one, so a short last page does not grow its barcodes.
     const layoutCount = Math.min(perPage, usable.length);
     const layoutRows = Math.max(1, Math.ceil(layoutCount / columns));
