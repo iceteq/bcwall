@@ -39,6 +39,7 @@
   const editorList = document.getElementById("editorList");
   const previewEl = document.getElementById("preview");
   const addBtn = document.getElementById("addBtn");
+  const addTextBtn = document.getElementById("addTextBtn");
   const clearBtn = document.getElementById("clearBtn");
 
   const importModal = document.getElementById("importModal");
@@ -90,19 +91,24 @@
   function parseImportLine(line) {
     const raw = String(line ?? "").trim();
     if (!raw) return null;
+    if (raw.startsWith("::")) {
+      const text = raw.slice(2).replace(/\\n/g, "\n").trim();
+      if (!text) return null;
+      return { title: "", text, kind: "text" };
+    }
     const pipe = raw.split("|");
     if (pipe.length >= 2) {
       const title = pipe[0].trim();
       const text = pipe.slice(1).join("|").trim();
-      if (text) return { title, text };
+      if (text) return { title, text, kind: "barcode" };
     }
     const tab = raw.split("\t");
     if (tab.length >= 2) {
       const title = tab[0].trim();
       const text = tab.slice(1).join("\t").trim();
-      if (text) return { title, text };
+      if (text) return { title, text, kind: "barcode" };
     }
-    return { title: "", text: raw };
+    return { title: "", text: raw, kind: "barcode" };
   }
 
   function findBadChars(text) {
@@ -272,6 +278,7 @@
     const payload = printItems.map((item) => ({
       text: String(item.text ?? ""),
       title: String(item.title ?? ""),
+      kind: item.kind === "text" ? "text" : "barcode",
     }));
     try {
       localStorage.setItem(ITEMS_KEY, JSON.stringify(payload));
@@ -292,7 +299,8 @@
         restored.push(
           makeItem(
             typeof row.text === "string" ? row.text : "",
-            typeof row.title === "string" ? row.title : ""
+            typeof row.title === "string" ? row.title : "",
+            row.kind === "text" ? "text" : "barcode"
           )
         );
       }
@@ -476,8 +484,13 @@
   }
 
   // —— Print mode ——
-  function makeItem(text, title) {
-    return { id: nextItemId++, text: String(text ?? ""), title: String(title ?? "") };
+  function makeItem(text, title, kind) {
+    return {
+      id: nextItemId++,
+      text: String(text ?? ""),
+      title: String(title ?? ""),
+      kind: kind === "text" ? "text" : "barcode",
+    };
   }
 
   function setPerPage(n) {
@@ -614,8 +627,15 @@
     return `${n} pages`;
   }
 
-  function friendlyTitle(count) {
+  function friendlyTitle(items) {
+    const count = items.length;
+    const textCount = items.filter((item) => item.kind === "text").length;
     if (count <= 0) return "Import codes to begin";
+    if (textCount > 0) {
+      if (count === 1) return "One text tile ready";
+      if (textCount === count) return `${count} text tiles ready`;
+      return `${count} tiles ready`;
+    }
     if (count === 1) return "One barcode ready";
     return `${count} barcodes ready`;
   }
@@ -664,11 +684,12 @@
     const titlesOn = showTitles();
 
     printItems.forEach((item, index) => {
+      const textOnly = item.kind === "text";
       const trimmed = item.text.trim();
-      const encoded = trimmed ? encodeLine(trimmed) : null;
+      const encoded = !textOnly && trimmed ? encodeLine(trimmed) : null;
 
       const row = document.createElement("div");
-      row.className = "edit-row" + (encoded && !encoded.ok ? " is-bad" : "");
+      row.className = "edit-row" + (!textOnly && encoded && !encoded.ok ? " is-bad" : "");
       row.dataset.id = String(item.id);
       row.draggable = true;
       row.style.animationDelay = `${Math.min(index, 12) * 28}ms`;
@@ -687,93 +708,136 @@
       const main = document.createElement("div");
       main.className = "edit-main";
 
-      if (titlesOn) {
-        const titleInput = document.createElement("input");
-        titleInput.type = "text";
-        titleInput.className = "edit-title";
-        titleInput.value = item.title;
-        titleInput.placeholder = "Title (optional)";
-        titleInput.addEventListener("input", () => {
-          item.title = titleInput.value;
+      if (textOnly) {
+        const copy = document.createElement("textarea");
+        copy.className = "edit-copy";
+        copy.rows = 3;
+        copy.value = item.text;
+        copy.placeholder = "Text for this tile";
+        copy.addEventListener("input", () => {
+          item.text = copy.value;
           refreshPrintPreviewOnly();
         });
-        titleInput.addEventListener("focus", () => {
+        copy.addEventListener("focus", () => {
           focusItemId = item.id;
-          focusField = "title";
+          focusField = "text";
         });
-        titleInput.addEventListener("keydown", (e) => {
-          if (e.key === "Enter") {
+        copy.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && copy.value === "" && printItems.length > 1) {
             e.preventDefault();
-            const textEl = row.querySelector(".edit-code");
-            if (textEl) textEl.focus();
+            printItems.splice(index, 1);
+            focusItemId = printItems[Math.max(0, index - 1)].id;
+            focusField = "text";
+            renderPrintUi();
           }
         });
-        main.appendChild(titleInput);
-      }
+        main.appendChild(copy);
+      } else {
+        if (titlesOn) {
+          const titleInput = document.createElement("input");
+          titleInput.type = "text";
+          titleInput.className = "edit-title";
+          titleInput.value = item.title;
+          titleInput.placeholder = "Title (optional)";
+          titleInput.addEventListener("input", () => {
+            item.title = titleInput.value;
+            refreshPrintPreviewOnly();
+          });
+          titleInput.addEventListener("focus", () => {
+            focusItemId = item.id;
+            focusField = "title";
+          });
+          titleInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              const textEl = row.querySelector(".edit-code");
+              if (textEl) textEl.focus();
+            }
+          });
+          main.appendChild(titleInput);
+        }
 
-      const input = document.createElement("input");
-      input.type = "text";
-      input.className = "edit-code";
-      input.value = item.text;
-      input.placeholder = "Barcode value";
-      input.spellcheck = false;
-      input.addEventListener("input", () => {
-        item.text = input.value;
-        const nextTrim = item.text.trim();
-        const next = nextTrim ? encodeLine(nextTrim) : null;
-        row.classList.toggle("is-bad", !!(next && !next.ok));
-        hint.textContent = next && !next.ok ? next.message : next && next.warning ? next.warning : "";
-        mini.classList.toggle("is-empty", !(next && next.ok));
-        if (next && next.ok) {
-          mini.innerHTML = "";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "edit-code";
+        input.value = item.text;
+        input.placeholder = "Barcode value";
+        input.spellcheck = false;
+        input.addEventListener("input", () => {
+          item.text = input.value;
+          const nextTrim = item.text.trim();
+          const next = nextTrim ? encodeLine(nextTrim) : null;
+          row.classList.toggle("is-bad", !!(next && !next.ok));
+          hint.textContent = next && !next.ok ? next.message : next && next.warning ? next.warning : "";
+          mini.classList.toggle("is-empty", !(next && next.ok));
+          if (next && next.ok) {
+            mini.innerHTML = "";
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            mini.appendChild(svg);
+            renderMini(svg, next.value);
+          } else {
+            mini.innerHTML = "";
+          }
+          refreshPrintPreviewOnly();
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            printItems.splice(index + 1, 0, makeItem(""));
+            focusItemId = printItems[index + 1].id;
+            focusField = titlesOn ? "title" : "text";
+            renderPrintUi();
+          } else if (e.key === "Backspace" && input.value === "" && printItems.length > 1) {
+            e.preventDefault();
+            printItems.splice(index, 1);
+            focusItemId = printItems[Math.max(0, index - 1)].id;
+            focusField = "text";
+            renderPrintUi();
+          }
+        });
+        input.addEventListener("focus", () => {
+          focusItemId = item.id;
+          focusField = "text";
+        });
+        main.appendChild(input);
+
+        const mini = document.createElement("div");
+        mini.className = "edit-mini" + (encoded && encoded.ok ? "" : " is-empty");
+        if (encoded && encoded.ok) {
           const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
           mini.appendChild(svg);
-          renderMini(svg, next.value);
-        } else {
-          mini.innerHTML = "";
+          renderMini(svg, encoded.value);
         }
-        refreshPrintPreviewOnly();
-      });
-      input.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          e.preventDefault();
-          printItems.splice(index + 1, 0, makeItem(""));
-          focusItemId = printItems[index + 1].id;
-          focusField = titlesOn ? "title" : "text";
-          renderPrintUi();
-        } else if (e.key === "Backspace" && input.value === "" && printItems.length > 1) {
-          e.preventDefault();
-          printItems.splice(index, 1);
-          focusItemId = printItems[Math.max(0, index - 1)].id;
-          focusField = "text";
-          renderPrintUi();
-        }
-      });
-      input.addEventListener("focus", () => {
-        focusItemId = item.id;
-        focusField = "text";
-      });
-      main.appendChild(input);
+        main.appendChild(mini);
 
-      const mini = document.createElement("div");
-      mini.className = "edit-mini" + (encoded && encoded.ok ? "" : " is-empty");
-      if (encoded && encoded.ok) {
-        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-        mini.appendChild(svg);
-        renderMini(svg, encoded.value);
+        const hint = document.createElement("p");
+        hint.className = "edit-hint";
+        if (encoded && !encoded.ok) hint.textContent = encoded.message;
+        else if (encoded && encoded.warning) hint.textContent = encoded.warning;
+        main.appendChild(hint);
       }
-      main.appendChild(mini);
-
-      const hint = document.createElement("p");
-      hint.className = "edit-hint";
-      if (encoded && !encoded.ok) hint.textContent = encoded.message;
-      else if (encoded && encoded.warning) hint.textContent = encoded.warning;
-      main.appendChild(hint);
 
       row.appendChild(main);
 
       const tools = document.createElement("div");
       tools.className = "edit-tools";
+
+      const kindBtn = document.createElement("button");
+      kindBtn.type = "button";
+      kindBtn.className = "icon-btn";
+      kindBtn.title = textOnly ? "Use a barcode" : "Text only, no barcode";
+      kindBtn.setAttribute("aria-label", kindBtn.title);
+      kindBtn.textContent = textOnly ? "▮" : "Aa";
+      kindBtn.addEventListener("click", () => {
+        if (textOnly) {
+          item.text = item.text.replace(/[ \t]*\n[ \t]*/g, " ").replace(/[ \t]{2,}/g, " ").trim();
+        }
+        item.kind = textOnly ? "barcode" : "text";
+        focusItemId = item.id;
+        focusField = "text";
+        renderPrintUi();
+      });
+      tools.appendChild(kindBtn);
 
       const dup = document.createElement("button");
       dup.type = "button";
@@ -781,7 +845,7 @@
       dup.title = "Duplicate";
       dup.textContent = "⧉";
       dup.addEventListener("click", () => {
-        printItems.splice(index + 1, 0, makeItem(item.text, item.title));
+        printItems.splice(index + 1, 0, makeItem(item.text, item.title, item.kind));
         focusItemId = printItems[index + 1].id;
         renderPrintUi();
       });
@@ -833,7 +897,7 @@
       const sel =
         focusField === "title"
           ? row && row.querySelector(".edit-title")
-          : row && row.querySelector(".edit-code");
+          : row && row.querySelector(".edit-copy, .edit-code");
       if (sel) {
         sel.focus();
         sel.select();
@@ -874,7 +938,7 @@
     const dateStamp = formatDateStamp();
 
     pageCountEl.textContent = friendlyPages(pages);
-    printMeta.textContent = friendlyTitle(usable.length);
+    printMeta.textContent = friendlyTitle(usable);
 
     previewEl.innerHTML = "";
 
@@ -942,6 +1006,15 @@
       slice.forEach((item) => {
         const text = item.text.trim();
         const cell = document.createElement("div");
+        if (item.kind === "text") {
+          cell.className = "sheet-cell is-text";
+          const copy = document.createElement("p");
+          copy.className = "sheet-cell-copy";
+          copy.textContent = String(item.text || "").replace(/\r\n/g, "\n").trim();
+          cell.appendChild(copy);
+          grid.appendChild(cell);
+          return;
+        }
         const encoded = encodeLine(text);
         const title = (item.title || "").trim();
         const size = encoded.ok
@@ -1067,7 +1140,7 @@
     const parsed = [];
     for (const line of lines) {
       const item = parseImportLine(line);
-      if (item) parsed.push(makeItem(item.text, item.title));
+      if (item) parsed.push(makeItem(item.text, item.title, item.kind));
     }
     if (!parsed.length) {
       importText.focus();
@@ -1103,6 +1176,13 @@
     printItems.push(makeItem(""));
     focusItemId = printItems[printItems.length - 1].id;
     focusField = showTitles() ? "title" : "text";
+    renderPrintUi();
+  });
+
+  addTextBtn.addEventListener("click", () => {
+    printItems.push(makeItem("", "", "text"));
+    focusItemId = printItems[printItems.length - 1].id;
+    focusField = "text";
     renderPrintUi();
   });
 

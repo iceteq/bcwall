@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=21" />
 </head>
 <body>
   <!-- Scan mode (Ctrl+Shift+B) -->
@@ -158,11 +158,14 @@
       <aside class="editor no-print">
         <div class="editor-head">
           <h2 class="editor-title">Codes</h2>
-          <p class="editor-sub">Import a list, or add codes one by one. Drag to reorder.</p>
+          <p class="editor-sub">Add a code or a text tile. Drag to reorder.</p>
         </div>
         <div class="editor-list" id="editorList"></div>
         <div class="editor-foot">
-          <button type="button" class="add-row" id="addBtn">+ Add another code</button>
+          <div class="add-row-pair">
+            <button type="button" class="add-row" id="addBtn">+ Add a code</button>
+            <button type="button" class="add-row" id="addTextBtn">+ Add text</button>
+          </div>
           <button type="button" class="text-btn" id="clearBtn">Clear all</button>
         </div>
       </aside>
@@ -191,6 +194,8 @@
       <p class="modal-help">
         One barcode per line. Optional:
         <code>Title | CODE</code> or <code>Title[Tab]CODE</code>.
+        A line starting with <code>::</code> is a text tile, with no barcode.
+        Use <code>\n</code> in that line for a line break.
       </p>
       <textarea id="importText" rows="12" placeholder="Damaged return | SKU-1001&#10;Wrong item | SKU-1002&#10;SKU-1003"></textarea>
       <label class="tool-toggle modal-toggle">
@@ -205,6 +210,6 @@
   </div>
 
   <script src="vendor/JsBarcode.code128.min.js"></script>
-  <script src="app.js?v=20"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>
