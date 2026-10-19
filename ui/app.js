@@ -192,20 +192,36 @@
     return !!showTitlesToggle.checked;
   }
 
+  const TEXT_SIZES = ["regular", "large", "xl", "xxl", "xxxl"];
+
+  function normalizeTextSize(value) {
+    return TEXT_SIZES.includes(value) ? value : "regular";
+  }
+
   function getTitleSize() {
-    return titleSizeSelect.value === "large" ? "large" : "regular";
+    return normalizeTextSize(titleSizeSelect.value);
   }
 
   function getCaptionSize() {
-    return captionSizeSelect.value === "large" ? "large" : "regular";
+    return normalizeTextSize(captionSizeSelect.value);
   }
 
-  function titleIsLarge() {
-    return showTitles() && getTitleSize() === "large";
+  function titleSizeClass(size) {
+    if (!showTitles() || size === "regular") return "";
+    if (size === "large") return " is-title-lg";
+    if (size === "xl") return " is-title-xl";
+    if (size === "xxl") return " is-title-xxl";
+    if (size === "xxxl") return " is-title-xxxl";
+    return "";
   }
 
-  function captionIsLarge() {
-    return getCaptionSize() === "large";
+  function captionSizeClass(size) {
+    if (size === "regular") return "";
+    if (size === "large") return " is-caption-lg";
+    if (size === "xl") return " is-caption-xl";
+    if (size === "xxl") return " is-caption-xxl";
+    if (size === "xxxl") return " is-caption-xxxl";
+    return "";
   }
 
   function showFooter() {
@@ -235,10 +251,10 @@
       if (typeof s.footer === "string") footerInput.value = s.footer;
       if (typeof s.showFooter === "boolean") showFooterToggle.checked = s.showFooter;
       if (typeof s.showTitles === "boolean") showTitlesToggle.checked = s.showTitles;
-      if (s.titleSize === "large" || s.titleSize === "regular") {
+      if (TEXT_SIZES.includes(s.titleSize)) {
         titleSizeSelect.value = s.titleSize;
       }
-      if (s.captionSize === "large" || s.captionSize === "regular") {
+      if (TEXT_SIZES.includes(s.captionSize)) {
         captionSizeSelect.value = s.captionSize;
       }
       if (typeof s.vCenter === "boolean") vCenterToggle.checked = s.vCenter;
@@ -510,10 +526,14 @@
     return Math.max(0.55, Math.round(w * 100) / 100);
   }
 
-  function largeTextReserveMm(captionLarge) {
-    // A large caption needs bar room in a fitted cell. Title size does not
+  function largeTextReserveMm(captionSize) {
+    // Bigger captions need bar room in a fitted cell. Title size does not
     // change the bars, so a regular title stays shorter than a large one.
-    return captionLarge ? 8 : 0;
+    if (captionSize === "xxxl") return 20;
+    if (captionSize === "xxl") return 16;
+    if (captionSize === "xl") return 12;
+    if (captionSize === "large") return 8;
+    return 0;
   }
 
   function wallBarHeightMm(rows, mode, paper, landscape, reserveMm) {
@@ -560,9 +580,26 @@
     return 30;
   }
 
-  function quietBarcodeHeight(baseHeight, rows, captionLarge) {
-    if (!captionLarge) return baseHeight;
-    const cut = rows >= 5 ? 0.12 : 0.06;
+  function quietBarcodeHeight(baseHeight, rows, captionSize) {
+    const size = normalizeTextSize(captionSize);
+    if (size === "regular") return baseHeight;
+    const dense = rows >= 5;
+    const cut =
+      size === "xxxl"
+        ? dense
+          ? 0.24
+          : 0.16
+        : size === "xxl"
+          ? dense
+            ? 0.2
+            : 0.12
+          : size === "xl"
+            ? dense
+              ? 0.16
+              : 0.09
+            : dense
+              ? 0.12
+              : 0.06;
     return Math.max(26, Math.round(baseHeight * (1 - cut)));
   }
 
@@ -572,7 +609,7 @@
     let width = barcodeWidth(valueLen);
     if (columns >= 4) width = Math.min(width, 1.15);
     else if (columns >= 3) width = Math.min(width, 1.35);
-    const boost = textBoost || { title: false, caption: false };
+    const boost = textBoost || { title: "regular", caption: "regular" };
 
     if (mode === "semi") {
       // Taller bars than the fixed size, still a normal barcode shape.
@@ -953,7 +990,10 @@
     const sizeMode = getSizeMode();
     const fit = sizeMode === "fit";
     const spread = sizeMode === "fit" || sizeMode === "semi";
-    const textBoost = { title: titleIsLarge(), caption: captionIsLarge() };
+    const textBoost = {
+      title: showTitles() ? getTitleSize() : "regular",
+      caption: getCaptionSize(),
+    };
     const textReserve = largeTextReserveMm(textBoost.caption);
     // Size every page like the first one, so a short last page does not grow its barcodes.
     const layoutCount = Math.min(perPage, usable.length);
@@ -978,8 +1018,8 @@
         (fit ? " is-fit" : "") +
         (sizeMode === "semi" ? " is-semi" : "") +
         (fit && pageSize.hero ? " is-fit-hero" : "") +
-        (textBoost.title ? " is-title-lg" : "") +
-        (textBoost.caption ? " is-caption-lg" : "");
+        titleSizeClass(textBoost.title) +
+        captionSizeClass(textBoost.caption);
       sheet.style.animationDelay = `${p * 60}ms`;
 
       const header = document.createElement("div");
