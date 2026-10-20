@@ -17,7 +17,6 @@ if not defined AHK (
 
 start "" "%AHK%" "%SCRIPT%"
 echo BarCode Anywhere is starting (warm Edge UI)...
-echo Ctrl+Shift+B = scan from selection
-echo Ctrl+Shift+P = print layout (use Import to paste)
+echo Ctrl+Alt+L = open label printer (selection becomes the code, title stays empty)
 echo Esc hides the window.
 timeout /t 3 >nul

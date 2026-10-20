@@ -33,6 +33,7 @@
   const titleSizeSelect = document.getElementById("titleSizeSelect");
   const captionSizeSelect = document.getElementById("captionSizeSelect");
   const titleSizeGroup = document.getElementById("titleSizeGroup");
+  const titleChips = document.getElementById("titleChips");
   const vCenterToggle = document.getElementById("vCenterToggle");
   const sizeModeSelect = document.getElementById("sizeModeSelect");
   const paperHint = document.getElementById("paperHint");
@@ -41,6 +42,7 @@
   const addBtn = document.getElementById("addBtn");
   const addTextBtn = document.getElementById("addTextBtn");
   const clearBtn = document.getElementById("clearBtn");
+  const TITLE_CHIPS = ["Act", "S/N", "Req", "Ord"];
 
   const importModal = document.getElementById("importModal");
   const importText = document.getElementById("importText");
@@ -358,6 +360,46 @@
     titleSizeGroup.querySelectorAll("button").forEach((btn) => {
       btn.disabled = !titlesOn;
     });
+    syncTitleChips();
+  }
+
+  function focusedBarcodeItem() {
+    if (focusItemId != null) {
+      const focused = printItems.find((item) => item.id === focusItemId);
+      if (focused && focused.kind !== "text") return focused;
+    }
+    return printItems.find((item) => item.kind !== "text") || null;
+  }
+
+  function syncTitleChips() {
+    if (!titleChips) return;
+    const titlesOn = showTitles();
+    titleChips.hidden = !titlesOn;
+    if (!titlesOn) return;
+    const item = focusedBarcodeItem();
+    const current = item ? String(item.title || "").trim() : "";
+    titleChips.querySelectorAll("[data-title-chip]").forEach((btn) => {
+      const value = btn.getAttribute("data-title-chip") || "";
+      btn.classList.toggle("is-active", current === value);
+    });
+  }
+
+  function applyTitleChip(value) {
+    if (!TITLE_CHIPS.includes(value)) return;
+    if (!showTitles()) {
+      showTitlesToggle.checked = true;
+    }
+    let item = focusedBarcodeItem();
+    if (!item) {
+      item = makeItem("");
+      printItems = printItems.length ? printItems.concat([item]) : [item];
+    }
+    item.title = item.title.trim() === value ? "" : value;
+    focusItemId = item.id;
+    focusField = "title";
+    saveSettings();
+    saveItems();
+    renderPrintUi();
   }
 
   function syncOrientSegments() {
@@ -464,7 +506,7 @@
       scanMeta.textContent = "";
       const empty = document.createElement("p");
       empty.className = "empty";
-      empty.textContent = "Select some text first, then press Ctrl+Shift+B.";
+      empty.textContent = "Select some text first, then press Ctrl+Alt+L.";
       scanList.appendChild(empty);
       return;
     }
@@ -778,11 +820,13 @@
           titleInput.placeholder = "Title (optional)";
           titleInput.addEventListener("input", () => {
             item.title = titleInput.value;
+            syncTitleChips();
             refreshPrintPreviewOnly();
           });
           titleInput.addEventListener("focus", () => {
             focusItemId = item.id;
             focusField = "title";
+            syncTitleChips();
           });
           titleInput.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
@@ -835,6 +879,7 @@
         input.addEventListener("focus", () => {
           focusItemId = item.id;
           focusField = "text";
+          syncTitleChips();
         });
         main.appendChild(input);
 
@@ -1163,6 +1208,21 @@
     renderPrintUi();
   }
 
+  function openLabelFromSelection(raw) {
+    // Hotkey launch: selection becomes barcode value(s), titles stay empty.
+    const lines = splitLines(raw);
+    printItems = lines.length
+      ? lines.map((line) => makeItem(line, ""))
+      : [makeItem("")];
+    pageTitleInput.value = "";
+    showTitlesToggle.checked = true;
+    focusItemId = printItems[0].id;
+    focusField = "title";
+    saveSettings();
+    saveItems();
+    renderPrintUi();
+  }
+
   function openImport() {
     importModal.hidden = false;
     importText.focus();
@@ -1299,6 +1359,13 @@
     saveSettings();
     renderPrintUi();
   });
+  if (titleChips) {
+    titleChips.querySelectorAll("[data-title-chip]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyTitleChip(btn.getAttribute("data-title-chip") || "");
+      });
+    });
+  }
   document.querySelectorAll(".seg[data-title-size]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (btn.disabled) return;
@@ -1346,8 +1413,7 @@
 
   function applyPayload(text, mode) {
     if (mode === "print") {
-      // Print opens its own workspace; Import supplies codes.
-      openPrintWorkspace();
+      openLabelFromSelection(text);
       return;
     }
     renderScan(text);
@@ -1379,8 +1445,8 @@
 
   function startLocalApi() {
     useLocalApi = true;
-    setMode("scan");
-    renderScan("");
+    // Warm start stays on the print layout; Ctrl+Alt+L refreshes codes via /api/show.
+    openPrintWorkspace();
     pullState();
     setInterval(pullState, 50);
     document.addEventListener("visibilitychange", () => {

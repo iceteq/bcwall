@@ -7,13 +7,13 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body>
-  <!-- Scan mode (Ctrl+Shift+B) -->
+  <!-- Legacy scan view kept for standalone /api payloads; hotkey opens print. -->
   <main class="dialog view" id="viewScan">
     <header class="top no-print">
-      <p class="hint">Ctrl+Shift+B · Esc to hide · one barcode per line</p>
+      <p class="hint">Ctrl+Alt+L · Esc to hide</p>
       <button type="button" class="close" data-hide aria-label="Close">×</button>
     </header>
 
@@ -23,12 +23,11 @@
     <div class="list" id="scanList"></div>
   </main>
 
-  <!-- Print mode (Ctrl+Shift+P) -->
+  <!-- Label printer (Ctrl+Alt+L) -->
   <main class="print-app view" id="viewPrint" hidden>
     <header class="print-chrome no-print">
       <div class="print-brand">
-        <p class="print-kicker">Print layout</p>
-        <h1 class="print-title" id="printMeta">Your sheet</h1>
+        <h1 class="print-title" id="printMeta">Ready</h1>
       </div>
       <div class="print-chrome-actions">
         <button type="button" class="btn ghost" id="importBtn">Import</button>
@@ -92,7 +91,7 @@
       </div>
 
       <label class="tool-toggle">
-        <input type="checkbox" id="showTitlesToggle" />
+        <input type="checkbox" id="showTitlesToggle" checked />
         <span>Barcode titles</span>
       </label>
 
@@ -170,7 +169,13 @@
       <aside class="editor no-print">
         <div class="editor-head">
           <h2 class="editor-title">Codes</h2>
-          <p class="editor-sub">Add a code or a text tile. Drag to reorder.</p>
+          <div class="title-chips" id="titleChips" hidden>
+            <span class="title-chips-label">Title</span>
+            <button type="button" class="title-chip" data-title-chip="Act">Act</button>
+            <button type="button" class="title-chip" data-title-chip="S/N">S/N</button>
+            <button type="button" class="title-chip" data-title-chip="Req">Req</button>
+            <button type="button" class="title-chip" data-title-chip="Ord">Ord</button>
+          </div>
         </div>
         <div class="editor-list" id="editorList"></div>
         <div class="editor-foot">
@@ -183,10 +188,6 @@
       </aside>
 
       <section class="preview-wrap">
-        <div class="preview-head no-print">
-          <span class="preview-label">Live preview</span>
-          <span class="preview-tip">What you print is what you see</span>
-        </div>
         <div class="preview" id="preview"></div>
       </section>
     </div>
@@ -209,7 +210,7 @@
         A line starting with <code>::</code> is a text tile, with no barcode.
         Use <code>\n</code> in that line for a line break.
       </p>
-      <textarea id="importText" rows="12" placeholder="Damaged return | SKU-1001&#10;Wrong item | SKU-1002&#10;SKU-1003"></textarea>
+      <textarea id="importText" rows="12" placeholder="SKU-1001&#10;SKU-1002&#10;SKU-1003"></textarea>
       <label class="tool-toggle modal-toggle">
         <input type="checkbox" id="importReplaceToggle" checked />
         <span>Replace current list</span>
@@ -222,6 +223,6 @@
   </div>
 
   <script src="vendor/JsBarcode.code128.min.js"></script>
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>

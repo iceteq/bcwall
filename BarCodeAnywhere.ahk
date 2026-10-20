@@ -3,7 +3,7 @@
 Persistent
 DetectHiddenWindows true
 
-; BarCode Anywhere — Ctrl+Shift+B scan dialog, Ctrl+Shift+P print layout
+; BarCode Anywhere — Ctrl+Alt+L opens the label printer at the bottom of the screen.
 ; Keeps a warm Edge --app window + local UI server for near-instant shows.
 
 DIR := A_ScriptDir
@@ -15,34 +15,29 @@ PORT := 27123
 BASE := "http://127.0.0.1:" PORT
 PROFILE := DIR "\.edge-app-profile"
 
-SCAN_W := 560
-SCAN_H := 520
-PRINT_W := 980
-PRINT_H := 740
+; Wide dock along the bottom so the preview sits beside the editor.
+WIN_W := 1200
+WIN_H := 560
 
 serverPid := 0
 edgePid := 0
 ready := false
-currentMode := "scan"
 suppressHideUntil := 0
 
 ; Don't name a variable HOTKEY — it collides with the built-in Hotkey() function.
-hkScan := "^+b"
-hkPrint := "^+p"
+hkLabel := "^!l"
 
 try {
-    Hotkey hkScan, (*) => FromSelection("scan")
-    Hotkey hkPrint, (*) => OpenPrintMode()
+    Hotkey hkLabel, (*) => FromSelection()
 } catch as err {
-    MsgBox "Could not register hotkeys:`n" err.Message, "BarCode Anywhere", "Iconx"
+    MsgBox "Could not register hotkey:`n" err.Message, "BarCode Anywhere", "Iconx"
     ExitApp
 }
 
-A_IconTip := "BarCode Anywhere — Ctrl+Shift+B / Ctrl+Shift+P"
+A_IconTip := "BarCode Anywhere — Ctrl+Alt+L"
 Tray := A_TrayMenu
 Tray.Delete()
-Tray.Add("Scan from clipboard", (*) => ShowBarcode(String(A_Clipboard), "scan"))
-Tray.Add("Open print layout", (*) => OpenPrintMode())
+Tray.Add("Open label printer", (*) => ShowBarcode(String(A_Clipboard)))
 Tray.Add("Warm up / restart UI", (*) => RestartUi())
 Tray.Add()
 Tray.Add("Exit", (*) => ExitApp())
@@ -63,35 +58,28 @@ SetTimer WatchHideFlag, 50
 StartUi()
 return
 
-OpenPrintMode() {
-    ShowBarcode("", "print")
-}
-
-FromSelection(mode) {
+FromSelection() {
     saved := ClipboardAll()
     A_Clipboard := ""
     Send "^c"
     if !ClipWait(0.35) {
         A_Clipboard := saved
-        ShowBarcode(String(A_Clipboard), mode)
+        ; Nothing selected — open with an empty code and empty title.
+        ShowBarcode("")
         return
     }
     text := String(A_Clipboard)
     A_Clipboard := saved
-    ShowBarcode(text, mode)
+    ShowBarcode(text)
 }
 
-ShowBarcode(text, mode := "scan") {
-    global ready, currentMode
-    if (mode != "print")
-        mode := "scan"
-    currentMode := mode
-
+ShowBarcode(text) {
+    global ready
     if !EnsureUi() {
         return
     }
 
-    url := BASE "/api/show?mode=" mode
+    url := BASE "/api/show?mode=print"
     if !HttpPost(url, String(text)) {
         RestartUi()
         if !HttpPost(url, String(text)) {
@@ -99,7 +87,7 @@ ShowBarcode(text, mode := "scan") {
             return
         }
     }
-    ShowDialog(mode)
+    ShowDialog()
 }
 
 StartUi() {
@@ -163,29 +151,25 @@ StartEdgeWarm(hideAfter := true) {
     if (edge = "")
         return false
 
-    args := '--app="' BASE '/" --user-data-dir="' PROFILE '" --window-size=' SCAN_W ',' SCAN_H ' --disable-features=TranslateUI'
+    args := '--app="' BASE '/" --user-data-dir="' PROFILE '" --window-size=' WIN_W ',' WIN_H ' --disable-features=TranslateUI'
     Run '"' edge '" ' args, , , &edgePid
 
     if !WinWait(WIN_TITLE, , 8)
         return false
 
-    try WinMove(,, SCAN_W, SCAN_H, WIN_TITLE)
+    PlaceDialog()
     if hideAfter
         HideDialog()
     return true
 }
 
-ShowDialog(mode := "scan") {
+ShowDialog() {
     global suppressHideUntil
 
-    w := (mode = "print") ? PRINT_W : SCAN_W
-    h := (mode = "print") ? PRINT_H : SCAN_H
-
-    ; Wait until the hotkey is fully released so Edge does not see Ctrl+Shift+P/B.
+    ; Wait until the hotkey is fully released so Edge does not see Ctrl+Alt+L.
     KeyWait "Ctrl"
-    KeyWait "Shift"
-    KeyWait "b"
-    KeyWait "p"
+    KeyWait "Alt"
+    KeyWait "l"
 
     try FileDelete(HIDE_FLAG)
     ; Ignore hide requests for a moment (stale flag / accidental Esc on focus).
@@ -198,7 +182,39 @@ ShowDialog(mode := "scan") {
 
     try WinShow(WIN_TITLE)
     try WinActivate(WIN_TITLE)
-    try WinMove(,, w, h, WIN_TITLE)
+    PlaceDialog()
+}
+
+PlaceDialog() {
+    ; Dock along the bottom of the monitor that holds the mouse (or primary).
+    mon := MonitorGetPrimary()
+    try {
+        CoordMode "Mouse", "Screen"
+        MouseGetPos(&mx, &my)
+        loop MonitorGetCount() {
+            MonitorGet(A_Index, &ml, &mt, &mr, &mb)
+            if (mx >= ml && mx < mr && my >= mt && my < mb) {
+                mon := A_Index
+                break
+            }
+        }
+    } catch {
+        /* keep primary */
+    }
+
+    MonitorGetWorkArea(mon, &left, &top, &right, &bottom)
+    w := WIN_W
+    h := WIN_H
+    workW := right - left
+    workH := bottom - top
+    if (w > workW - 24)
+        w := Max(720, workW - 24)
+    if (h > workH - 24)
+        h := Max(420, workH - 24)
+
+    x := left + ((workW - w) // 2)
+    y := bottom - h - 10
+    try WinMove(x, y, w, h, WIN_TITLE)
 }
 
 HideDialog() {
