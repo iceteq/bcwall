@@ -563,6 +563,11 @@ body {
   box-shadow: 0 0 0 2px rgba(47, 93, 80, 0.18);
 }
 
+.edit-row.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(47, 93, 80, 0.18);
+}
+
 .edit-handle {
   display: flex;
   align-items: center;
@@ -941,6 +946,28 @@ body {
   background: #f6f1e8;
   print-color-adjust: exact;
   -webkit-print-color-adjust: exact;
+  cursor: grab;
+  transition: box-shadow 0.15s ease, outline-color 0.15s ease, opacity 0.15s ease;
+}
+
+.sheet-cell:active {
+  cursor: grabbing;
+}
+
+.sheet-cell.is-selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px rgba(47, 93, 80, 0.16);
+}
+
+.sheet-cell.is-dragging {
+  opacity: 0.55;
+}
+
+.sheet-cell.is-drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px rgba(47, 93, 80, 0.12);
 }
 
 .sheet-grid.cols-1 .sheet-cell {
@@ -1686,6 +1713,10 @@ body {
     background: #f6f1e8;
     print-color-adjust: exact;
     -webkit-print-color-adjust: exact;
+    cursor: auto;
+    outline: none !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
   }
 
   html.paper-a4.orient-portrait @page {

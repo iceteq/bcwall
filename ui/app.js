@@ -54,6 +54,8 @@
   let dragFromId = null;
   let focusItemId = null;
   let focusField = "text";
+  let selectedItemId = null;
+  let previewDragActive = false;
 
   document.querySelectorAll("[data-hide]").forEach((btn) => {
     btn.addEventListener("click", requestHide);
@@ -696,7 +698,81 @@
     if (from < 0 || to < 0) return;
     const [item] = printItems.splice(from, 1);
     printItems.splice(to, 0, item);
+    selectedItemId = fromId;
     renderPrintUi();
+  }
+
+  function applySelectionHighlights() {
+    const id = selectedItemId;
+    editorList.querySelectorAll(".edit-row").forEach((row) => {
+      row.classList.toggle("is-selected", Number(row.dataset.id) === id);
+    });
+    previewEl.querySelectorAll(".sheet-cell[data-id]").forEach((cell) => {
+      cell.classList.toggle("is-selected", Number(cell.dataset.id) === id);
+    });
+  }
+
+  function selectPreviewItem(id, { focus = true, field = "text" } = {}) {
+    selectedItemId = id;
+    applySelectionHighlights();
+    const row = editorList.querySelector(`.edit-row[data-id="${id}"]`);
+    if (!row) return;
+    row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (!focus) return;
+    const sel =
+      field === "title"
+        ? row.querySelector(".edit-title")
+        : row.querySelector(".edit-copy, .edit-code");
+    if (!sel) return;
+    sel.focus();
+    if (typeof sel.select === "function") sel.select();
+  }
+
+  function wirePreviewCell(cell, item) {
+    cell.dataset.id = String(item.id);
+    cell.draggable = true;
+    cell.setAttribute("title", "Click to edit · drag to reorder");
+    if (selectedItemId === item.id) cell.classList.add("is-selected");
+
+    cell.addEventListener("click", () => {
+      if (previewDragActive) return;
+      selectPreviewItem(item.id, { focus: true, field: "text" });
+    });
+
+    cell.addEventListener("dragstart", (e) => {
+      previewDragActive = true;
+      dragFromId = item.id;
+      cell.classList.add("is-dragging");
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", String(item.id));
+    });
+    cell.addEventListener("dragend", () => {
+      cell.classList.remove("is-dragging");
+      previewEl.querySelectorAll(".is-drag-over").forEach((el) => el.classList.remove("is-drag-over"));
+      dragFromId = null;
+      setTimeout(() => {
+        previewDragActive = false;
+      }, 0);
+    });
+    cell.addEventListener("dragover", (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "move";
+      if (!cell.classList.contains("is-drag-over")) {
+        previewEl.querySelectorAll(".is-drag-over").forEach((el) => el.classList.remove("is-drag-over"));
+        cell.classList.add("is-drag-over");
+      }
+    });
+    cell.addEventListener("dragleave", (e) => {
+      if (e.relatedTarget && cell.contains(e.relatedTarget)) return;
+      cell.classList.remove("is-drag-over");
+    });
+    cell.addEventListener("drop", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      cell.classList.remove("is-drag-over");
+      const from = Number(e.dataTransfer.getData("text/plain") || dragFromId);
+      moveItem(from, item.id);
+    });
   }
 
   function renderMini(svg, value) {
@@ -719,6 +795,7 @@
   function renderEditor() {
     editorList.innerHTML = "";
     const titlesOn = showTitles();
+    if (focusItemId != null) selectedItemId = focusItemId;
 
     printItems.forEach((item, index) => {
       const textOnly = item.kind === "text";
@@ -726,7 +803,10 @@
       const encoded = !textOnly && trimmed ? encodeLine(trimmed) : null;
 
       const row = document.createElement("div");
-      row.className = "edit-row" + (!textOnly && encoded && !encoded.ok ? " is-bad" : "");
+      row.className =
+        "edit-row" +
+        (!textOnly && encoded && !encoded.ok ? " is-bad" : "") +
+        (selectedItemId === item.id ? " is-selected" : "");
       row.dataset.id = String(item.id);
       row.draggable = true;
       row.style.animationDelay = `${Math.min(index, 12) * 28}ms`;
@@ -758,6 +838,8 @@
         copy.addEventListener("focus", () => {
           focusItemId = item.id;
           focusField = "text";
+          selectedItemId = item.id;
+          applySelectionHighlights();
         });
         copy.addEventListener("keydown", (e) => {
           if (e.key === "Backspace" && copy.value === "" && printItems.length > 1) {
@@ -783,6 +865,8 @@
           titleInput.addEventListener("focus", () => {
             focusItemId = item.id;
             focusField = "title";
+            selectedItemId = item.id;
+            applySelectionHighlights();
           });
           titleInput.addEventListener("keydown", (e) => {
             if (e.key === "Enter") {
@@ -835,6 +919,8 @@
         input.addEventListener("focus", () => {
           focusItemId = item.id;
           focusField = "text";
+          selectedItemId = item.id;
+          applySelectionHighlights();
         });
         main.appendChild(input);
 
@@ -1052,6 +1138,7 @@
           copy.className = "sheet-cell-copy";
           copy.textContent = String(item.text || "").replace(/\r\n/g, "\n").trim();
           cell.appendChild(copy);
+          wirePreviewCell(cell, item);
           grid.appendChild(cell);
           return;
         }
@@ -1080,6 +1167,7 @@
           err.className = "sheet-cell-error";
           err.textContent = encoded.message;
           cell.appendChild(err);
+          wirePreviewCell(cell, item);
           grid.appendChild(cell);
           return;
         }
@@ -1120,6 +1208,7 @@
         label.className = "sheet-cell-label";
         label.textContent = encoded.label;
         cell.appendChild(label);
+        wirePreviewCell(cell, item);
         grid.appendChild(cell);
       });
 
