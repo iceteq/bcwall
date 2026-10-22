@@ -6,6 +6,8 @@
   const API_MODE = location.protocol === "http:" || location.protocol === "https:";
   const SETTINGS_KEY = "bca-print-settings-v1";
   const ITEMS_KEY = "bca-print-items-v1";
+  const WALLS_KEY = "bca-walls-v1";
+  const ACTIVE_WALL_KEY = "bca-active-wall-id-v1";
 
   const viewScan = document.getElementById("viewScan");
   const viewPrint = document.getElementById("viewPrint");
@@ -46,6 +48,12 @@
   const importText = document.getElementById("importText");
   const importReplaceToggle = document.getElementById("importReplaceToggle");
   const importApplyBtn = document.getElementById("importApplyBtn");
+  const wallsModal = document.getElementById("wallsModal");
+  const wallsBtn = document.getElementById("wallsBtn");
+  const wallsList = document.getElementById("wallsList");
+  const wallNameInput = document.getElementById("wallNameInput");
+  const wallSaveBtn = document.getElementById("wallSaveBtn");
+  const activeWallLabel = document.getElementById("activeWallLabel");
 
   let useLocalApi = false;
   let lastId = -1;
@@ -56,12 +64,28 @@
   let focusField = "text";
   let selectedItemId = null;
   let previewDragActive = false;
+  let activeWallId = null;
 
   document.querySelectorAll("[data-hide]").forEach((btn) => {
     btn.addEventListener("click", requestHide);
   });
   document.addEventListener("keydown", (e) => {
+    if (
+      (e.key === "w" || e.key === "W") &&
+      e.ctrlKey &&
+      e.shiftKey &&
+      !e.altKey &&
+      !e.metaKey
+    ) {
+      e.preventDefault();
+      if (!viewPrint.hidden) openWalls();
+      return;
+    }
     if (e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey) {
+      if (!wallsModal.hidden) {
+        closeWalls();
+        return;
+      }
       if (!importModal.hidden) {
         closeImport();
         return;
@@ -240,38 +264,8 @@
     return "normal";
   }
 
-  function loadSettings() {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (!raw) return;
-      const s = JSON.parse(raw);
-      if (s.paper) paperSelect.value = s.paper;
-      if (s.orient) orientSelect.value = s.orient;
-      if (s.columns) columnsSelect.value = String(s.columns);
-      if (s.perPage) perPageInput.value = String(s.perPage);
-      if (typeof s.pageTitle === "string") pageTitleInput.value = s.pageTitle;
-      if (typeof s.footer === "string") footerInput.value = s.footer;
-      if (typeof s.showFooter === "boolean") showFooterToggle.checked = s.showFooter;
-      if (typeof s.showTitles === "boolean") showTitlesToggle.checked = s.showTitles;
-      if (TEXT_SIZES.includes(s.titleSize)) {
-        titleSizeSelect.value = s.titleSize;
-      }
-      if (TEXT_SIZES.includes(s.captionSize)) {
-        captionSizeSelect.value = s.captionSize;
-      }
-      if (typeof s.vCenter === "boolean") vCenterToggle.checked = s.vCenter;
-      if (s.sizeMode === "semi" || s.sizeMode === "fit" || s.sizeMode === "normal") {
-        sizeModeSelect.value = s.sizeMode;
-      } else if (s.fitToPaper) {
-        sizeModeSelect.value = "fit";
-      }
-    } catch (_) {
-      /* ignore */
-    }
-  }
-
-  function saveSettings() {
-    const payload = {
+  function collectSettings() {
+    return {
       paper: getPaper(),
       orient: getOrientation(),
       columns: getColumns(),
@@ -285,47 +279,312 @@
       vCenter: vCenter(),
       sizeMode: getSizeMode(),
     };
+  }
+
+  function applySettings(s) {
+    if (!s || typeof s !== "object") return;
+    if (s.paper) paperSelect.value = s.paper;
+    if (s.orient) orientSelect.value = s.orient;
+    if (s.columns) columnsSelect.value = String(s.columns);
+    if (s.perPage) perPageInput.value = String(s.perPage);
+    if (typeof s.pageTitle === "string") pageTitleInput.value = s.pageTitle;
+    if (typeof s.footer === "string") footerInput.value = s.footer;
+    if (typeof s.showFooter === "boolean") showFooterToggle.checked = s.showFooter;
+    if (typeof s.showTitles === "boolean") showTitlesToggle.checked = s.showTitles;
+    if (TEXT_SIZES.includes(s.titleSize)) {
+      titleSizeSelect.value = s.titleSize;
+    }
+    if (TEXT_SIZES.includes(s.captionSize)) {
+      captionSizeSelect.value = s.captionSize;
+    }
+    if (typeof s.vCenter === "boolean") vCenterToggle.checked = s.vCenter;
+    if (s.sizeMode === "semi" || s.sizeMode === "fit" || s.sizeMode === "normal") {
+      sizeModeSelect.value = s.sizeMode;
+    } else if (s.fitToPaper) {
+      sizeModeSelect.value = "fit";
+    }
+  }
+
+  function loadSettings() {
     try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if (!raw) return;
+      applySettings(JSON.parse(raw));
     } catch (_) {
       /* ignore */
     }
   }
 
-  function saveItems() {
-    const payload = printItems.map((item) => ({
+  function saveSettings() {
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(collectSettings()));
+    } catch (_) {
+      /* ignore */
+    }
+    persistActiveWall();
+  }
+
+  function serializeItems(list) {
+    return (list || []).map((item) => ({
       text: String(item.text ?? ""),
       title: String(item.title ?? ""),
       kind: item.kind === "text" ? "text" : "barcode",
     }));
+  }
+
+  function itemsFromPayload(list) {
+    if (!Array.isArray(list) || !list.length) return [];
+    const restored = [];
+    for (const row of list) {
+      if (!row || typeof row !== "object") continue;
+      restored.push(
+        makeItem(
+          typeof row.text === "string" ? row.text : "",
+          typeof row.title === "string" ? row.title : "",
+          row.kind === "text" ? "text" : "barcode"
+        )
+      );
+    }
+    return restored;
+  }
+
+  function saveItems() {
     try {
-      localStorage.setItem(ITEMS_KEY, JSON.stringify(payload));
+      localStorage.setItem(ITEMS_KEY, JSON.stringify(serializeItems(printItems)));
     } catch (_) {
       /* ignore */
     }
+    persistActiveWall();
   }
 
   function loadItems() {
     try {
       const raw = localStorage.getItem(ITEMS_KEY);
       if (!raw) return;
-      const list = JSON.parse(raw);
-      if (!Array.isArray(list) || !list.length) return;
-      const restored = [];
-      for (const row of list) {
-        if (!row || typeof row !== "object") continue;
-        restored.push(
-          makeItem(
-            typeof row.text === "string" ? row.text : "",
-            typeof row.title === "string" ? row.title : "",
-            row.kind === "text" ? "text" : "barcode"
-          )
-        );
-      }
+      const restored = itemsFromPayload(JSON.parse(raw));
       if (restored.length) printItems = restored;
     } catch (_) {
       /* ignore */
     }
+  }
+
+  function readWalls() {
+    try {
+      const raw = localStorage.getItem(WALLS_KEY);
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return [];
+      return list.filter((w) => w && typeof w === "object" && typeof w.id === "string");
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function writeWalls(list) {
+    try {
+      localStorage.setItem(WALLS_KEY, JSON.stringify(list));
+    } catch (_) {
+      /* ignore */
+    }
+  }
+
+  function loadActiveWallId() {
+    try {
+      const id = localStorage.getItem(ACTIVE_WALL_KEY);
+      activeWallId = id || null;
+    } catch (_) {
+      activeWallId = null;
+    }
+  }
+
+  function setActiveWallId(id) {
+    activeWallId = id || null;
+    try {
+      if (activeWallId) localStorage.setItem(ACTIVE_WALL_KEY, activeWallId);
+      else localStorage.removeItem(ACTIVE_WALL_KEY);
+    } catch (_) {
+      /* ignore */
+    }
+    syncActiveWallLabel();
+  }
+
+  function activeWallRecord() {
+    if (!activeWallId) return null;
+    return readWalls().find((w) => w.id === activeWallId) || null;
+  }
+
+  function syncActiveWallLabel() {
+    if (!activeWallLabel) return;
+    const wall = activeWallRecord();
+    if (!wall) {
+      activeWallLabel.hidden = true;
+      activeWallLabel.textContent = "";
+      return;
+    }
+    activeWallLabel.hidden = false;
+    activeWallLabel.textContent = wall.name;
+  }
+
+  function defaultWallName() {
+    const title = pageTitleInput.value.trim();
+    if (title) return title.slice(0, 80);
+    const usable = printItems.filter((i) => i.text.trim()).length;
+    if (usable === 1) return "1 code wall";
+    if (usable > 1) return `${usable} code wall`;
+    return "Untitled wall";
+  }
+
+  function persistActiveWall() {
+    if (!activeWallId) return;
+    const walls = readWalls();
+    const idx = walls.findIndex((w) => w.id === activeWallId);
+    if (idx < 0) {
+      setActiveWallId(null);
+      return;
+    }
+    walls[idx] = {
+      ...walls[idx],
+      items: serializeItems(printItems),
+      settings: collectSettings(),
+      updatedAt: Date.now(),
+    };
+    writeWalls(walls);
+  }
+
+  function saveNamedWall(name) {
+    const trimmed = String(name || "").trim() || defaultWallName();
+    const walls = readWalls();
+    const now = Date.now();
+    const existing = activeWallId ? walls.find((w) => w.id === activeWallId) : null;
+    if (existing) {
+      existing.name = trimmed;
+      existing.items = serializeItems(printItems);
+      existing.settings = collectSettings();
+      existing.updatedAt = now;
+      writeWalls(walls);
+      syncActiveWallLabel();
+      return existing;
+    }
+    const wall = {
+      id: `wall-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+      name: trimmed,
+      items: serializeItems(printItems),
+      settings: collectSettings(),
+      updatedAt: now,
+      createdAt: now,
+    };
+    walls.unshift(wall);
+    writeWalls(walls);
+    setActiveWallId(wall.id);
+    return wall;
+  }
+
+  function openWallById(id) {
+    const wall = readWalls().find((w) => w.id === id);
+    if (!wall) return false;
+    const restored = itemsFromPayload(wall.items);
+    printItems = restored.length ? restored : [makeItem("")];
+    applySettings(wall.settings || {});
+    setActiveWallId(wall.id);
+    selectedItemId = null;
+    focusItemId = printItems[0].id;
+    focusField = "text";
+    saveSettings();
+    saveItems();
+    renderPrintUi();
+    return true;
+  }
+
+  function deleteWallById(id) {
+    const walls = readWalls().filter((w) => w.id !== id);
+    writeWalls(walls);
+    if (activeWallId === id) setActiveWallId(null);
+  }
+
+  function formatWallWhen(ts) {
+    const t = Number(ts) || 0;
+    if (!t) return "";
+    try {
+      return new Date(t).toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function renderWallsList() {
+    if (!wallsList) return;
+    wallsList.innerHTML = "";
+    const walls = readWalls().slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (!walls.length) {
+      const empty = document.createElement("p");
+      empty.className = "walls-empty";
+      empty.textContent = "No saved walls yet — name this one and hit Save.";
+      wallsList.appendChild(empty);
+      return;
+    }
+    walls.forEach((wall) => {
+      const count = Array.isArray(wall.items)
+        ? wall.items.filter((i) => i && String(i.text || "").trim()).length
+        : 0;
+      const row = document.createElement("div");
+      row.className = "wall-row" + (wall.id === activeWallId ? " is-active" : "");
+
+      const main = document.createElement("button");
+      main.type = "button";
+      main.className = "wall-row-main";
+      main.title = "Open wall";
+      const name = document.createElement("span");
+      name.className = "wall-row-name";
+      name.textContent = wall.name || "Untitled wall";
+      const meta = document.createElement("span");
+      meta.className = "wall-row-meta";
+      meta.textContent =
+        (count === 1 ? "1 code" : `${count} codes`) +
+        (wall.updatedAt ? ` · ${formatWallWhen(wall.updatedAt)}` : "");
+      main.appendChild(name);
+      main.appendChild(meta);
+      main.addEventListener("click", () => {
+        if (openWallById(wall.id)) closeWalls();
+      });
+
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "icon-btn danger";
+      del.title = "Delete wall";
+      del.setAttribute("aria-label", "Delete wall");
+      del.textContent = "✕";
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete “${wall.name || "Untitled wall"}”?`)) return;
+        deleteWallById(wall.id);
+        renderWallsList();
+        syncActiveWallLabel();
+      });
+
+      row.appendChild(main);
+      row.appendChild(del);
+      wallsList.appendChild(row);
+    });
+  }
+
+  function openWalls() {
+    if (!importModal.hidden) closeImport();
+    const current = activeWallRecord();
+    wallNameInput.value = current ? current.name : defaultWallName();
+    wallSaveBtn.textContent = current ? "Update" : "Save";
+    renderWallsList();
+    wallsModal.hidden = false;
+    wallNameInput.focus();
+    wallNameInput.select();
+  }
+
+  function closeWalls() {
+    wallsModal.hidden = true;
   }
 
   function syncColumnSegments() {
@@ -1301,6 +1560,22 @@
     el.addEventListener("click", closeImport);
   });
 
+  if (wallsBtn) wallsBtn.addEventListener("click", openWalls);
+  document.querySelectorAll("[data-walls-close]").forEach((el) => {
+    el.addEventListener("click", closeWalls);
+  });
+  wallSaveBtn.addEventListener("click", () => {
+    saveNamedWall(wallNameInput.value);
+    wallSaveBtn.textContent = "Update";
+    renderWallsList();
+  });
+  wallNameInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      wallSaveBtn.click();
+    }
+  });
+
   addBtn.addEventListener("click", () => {
     printItems.push(makeItem(""));
     focusItemId = printItems[printItems.length - 1].id;
@@ -1503,6 +1778,9 @@
 
   loadSettings();
   loadItems();
+  loadActiveWallId();
+  if (activeWallId && !activeWallRecord()) setActiveWallId(null);
+  else syncActiveWallLabel();
   syncColumnSegments();
   syncOrientSegments();
   syncDocumentClasses();

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=22" />
 </head>
 <body>
   <!-- Scan mode (Ctrl+Shift+B) -->
@@ -27,7 +27,10 @@
   <main class="print-app view" id="viewPrint" hidden>
     <header class="print-chrome no-print">
       <div class="print-brand">
-        <p class="print-kicker">Print layout</p>
+        <button type="button" class="print-kicker-btn" id="wallsBtn" title="Saved walls">
+          Print layout
+        </button>
+        <p class="print-wall-name" id="activeWallLabel" hidden></p>
         <h1 class="print-title" id="printMeta">Your sheet</h1>
       </div>
       <div class="print-chrome-actions">
@@ -221,7 +224,32 @@
     </div>
   </div>
 
+  <!-- Saved walls (hidden: open via Print layout kicker or Ctrl+Shift+W) -->
+  <div class="modal no-print" id="wallsModal" hidden>
+    <div class="modal-backdrop" data-walls-close></div>
+    <div class="modal-card walls-card" role="dialog" aria-labelledby="wallsHeading">
+      <header class="modal-head">
+        <div>
+          <p class="modal-kicker">This browser</p>
+          <h2 id="wallsHeading">Saved walls</h2>
+        </div>
+        <button type="button" class="close" data-walls-close aria-label="Close">×</button>
+      </header>
+      <p class="modal-help">
+        Save a wall and open it later on this device. Edits keep auto-updating the open wall.
+      </p>
+      <div class="wall-save-row">
+        <input type="text" id="wallNameInput" class="toolbar-input" placeholder="Name this wall" maxlength="80" />
+        <button type="button" class="btn primary" id="wallSaveBtn">Save</button>
+      </div>
+      <div class="walls-list" id="wallsList"></div>
+      <footer class="modal-actions">
+        <button type="button" class="btn ghost" data-walls-close>Done</button>
+      </footer>
+    </div>
+  </div>
+
   <script src="vendor/JsBarcode.code128.min.js"></script>
-  <script src="app.js?v=21"></script>
+  <script src="app.js?v=22"></script>
 </body>
 </html>
