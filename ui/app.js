@@ -1057,7 +1057,7 @@
     const titlesOn = showTitles();
     const pageTitle = pageTitleInput.value.trim();
     const footerOn = showFooter();
-    const footer = footerInput.value.trim() || "BarCode Anywhere - Anton";
+    const footer = footerInput.value.trim() || "Barcode Wall";
     const dateStamp = formatDateStamp();
 
     pageCountEl.textContent = friendlyPages(pages);
