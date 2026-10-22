@@ -48,12 +48,13 @@
   const importText = document.getElementById("importText");
   const importReplaceToggle = document.getElementById("importReplaceToggle");
   const importApplyBtn = document.getElementById("importApplyBtn");
-  const wallsModal = document.getElementById("wallsModal");
-  const wallsBtn = document.getElementById("wallsBtn");
-  const wallsList = document.getElementById("wallsList");
-  const wallNameInput = document.getElementById("wallNameInput");
-  const wallSaveBtn = document.getElementById("wallSaveBtn");
-  const activeWallLabel = document.getElementById("activeWallLabel");
+  const jobsModal = document.getElementById("jobsModal");
+  const jobsBtn = document.getElementById("jobsBtn");
+  const jobsList = document.getElementById("jobsList");
+  const jobNameInput = document.getElementById("jobNameInput");
+  const jobSaveBtn = document.getElementById("jobSaveBtn");
+  const jobUpdateBtn = document.getElementById("jobUpdateBtn");
+  const activeJobLabel = document.getElementById("activeJobLabel");
 
   let useLocalApi = false;
   let lastId = -1;
@@ -64,26 +65,15 @@
   let focusField = "text";
   let selectedItemId = null;
   let previewDragActive = false;
-  let activeWallId = null;
+  let activeJobId = null;
 
   document.querySelectorAll("[data-hide]").forEach((btn) => {
     btn.addEventListener("click", requestHide);
   });
   document.addEventListener("keydown", (e) => {
-    if (
-      (e.key === "w" || e.key === "W") &&
-      e.ctrlKey &&
-      e.shiftKey &&
-      !e.altKey &&
-      !e.metaKey
-    ) {
-      e.preventDefault();
-      if (!viewPrint.hidden) openWalls();
-      return;
-    }
     if (e.key === "Escape" && !e.ctrlKey && !e.shiftKey && !e.altKey) {
-      if (!wallsModal.hidden) {
-        closeWalls();
+      if (!jobsModal.hidden) {
+        closeJobs();
         return;
       }
       if (!importModal.hidden) {
@@ -321,7 +311,7 @@
     } catch (_) {
       /* ignore */
     }
-    persistActiveWall();
+    persistActiveJob();
   }
 
   function serializeItems(list) {
@@ -354,7 +344,7 @@
     } catch (_) {
       /* ignore */
     }
-    persistActiveWall();
+    persistActiveJob();
   }
 
   function loadItems() {
@@ -368,7 +358,7 @@
     }
   }
 
-  function readWalls() {
+  function readJobs() {
     try {
       const raw = localStorage.getItem(WALLS_KEY);
       if (!raw) return [];
@@ -380,7 +370,7 @@
     }
   }
 
-  function writeWalls(list) {
+  function writeJobs(list) {
     try {
       localStorage.setItem(WALLS_KEY, JSON.stringify(list));
     } catch (_) {
@@ -388,104 +378,119 @@
     }
   }
 
-  function loadActiveWallId() {
+  function loadActiveJobId() {
     try {
       const id = localStorage.getItem(ACTIVE_WALL_KEY);
-      activeWallId = id || null;
+      activeJobId = id || null;
     } catch (_) {
-      activeWallId = null;
+      activeJobId = null;
     }
   }
 
-  function setActiveWallId(id) {
-    activeWallId = id || null;
+  function setActiveJobId(id) {
+    activeJobId = id || null;
     try {
-      if (activeWallId) localStorage.setItem(ACTIVE_WALL_KEY, activeWallId);
+      if (activeJobId) localStorage.setItem(ACTIVE_WALL_KEY, activeJobId);
       else localStorage.removeItem(ACTIVE_WALL_KEY);
     } catch (_) {
       /* ignore */
     }
-    syncActiveWallLabel();
+    syncActiveJobLabel();
+    syncJobActionButtons();
   }
 
-  function activeWallRecord() {
-    if (!activeWallId) return null;
-    return readWalls().find((w) => w.id === activeWallId) || null;
+  function activeJobRecord() {
+    if (!activeJobId) return null;
+    return readJobs().find((w) => w.id === activeJobId) || null;
   }
 
-  function syncActiveWallLabel() {
-    if (!activeWallLabel) return;
-    const wall = activeWallRecord();
-    if (!wall) {
-      activeWallLabel.hidden = true;
-      activeWallLabel.textContent = "";
+  function syncActiveJobLabel() {
+    if (!activeJobLabel) return;
+    const job = activeJobRecord();
+    if (!job) {
+      activeJobLabel.hidden = true;
+      activeJobLabel.textContent = "";
       return;
     }
-    activeWallLabel.hidden = false;
-    activeWallLabel.textContent = wall.name;
+    activeJobLabel.hidden = false;
+    activeJobLabel.textContent = job.name;
   }
 
-  function defaultWallName() {
+  function syncJobActionButtons() {
+    if (!jobUpdateBtn) return;
+    jobUpdateBtn.disabled = !activeJobId || !activeJobRecord();
+  }
+
+  function defaultJobName() {
     const title = pageTitleInput.value.trim();
     if (title) return title.slice(0, 80);
     const usable = printItems.filter((i) => i.text.trim()).length;
-    if (usable === 1) return "1 code wall";
-    if (usable > 1) return `${usable} code wall`;
-    return "Untitled wall";
+    if (usable === 1) return "1 code job";
+    if (usable > 1) return `${usable} code job`;
+    return "Untitled job";
   }
 
-  function persistActiveWall() {
-    if (!activeWallId) return;
-    const walls = readWalls();
-    const idx = walls.findIndex((w) => w.id === activeWallId);
+  function persistActiveJob() {
+    if (!activeJobId) return;
+    const jobs = readJobs();
+    const idx = jobs.findIndex((w) => w.id === activeJobId);
     if (idx < 0) {
-      setActiveWallId(null);
+      setActiveJobId(null);
       return;
     }
-    walls[idx] = {
-      ...walls[idx],
+    jobs[idx] = {
+      ...jobs[idx],
       items: serializeItems(printItems),
       settings: collectSettings(),
       updatedAt: Date.now(),
     };
-    writeWalls(walls);
+    writeJobs(jobs);
   }
 
-  function saveNamedWall(name) {
-    const trimmed = String(name || "").trim() || defaultWallName();
-    const walls = readWalls();
+  function saveJobAsNew(name) {
+    const trimmed = String(name || "").trim() || defaultJobName();
+    const jobs = readJobs();
     const now = Date.now();
-    const existing = activeWallId ? walls.find((w) => w.id === activeWallId) : null;
-    if (existing) {
-      existing.name = trimmed;
-      existing.items = serializeItems(printItems);
-      existing.settings = collectSettings();
-      existing.updatedAt = now;
-      writeWalls(walls);
-      syncActiveWallLabel();
-      return existing;
-    }
-    const wall = {
-      id: `wall-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    const job = {
+      id: `job-${now.toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
       name: trimmed,
       items: serializeItems(printItems),
       settings: collectSettings(),
       updatedAt: now,
       createdAt: now,
     };
-    walls.unshift(wall);
-    writeWalls(walls);
-    setActiveWallId(wall.id);
-    return wall;
+    jobs.unshift(job);
+    writeJobs(jobs);
+    setActiveJobId(job.id);
+    return job;
   }
 
-  function openWallById(id) {
-    const wall = readWalls().find((w) => w.id === id);
-    if (!wall) return false;
-    const restored = itemsFromPayload(wall.items);
+  function updateActiveJob(name) {
+    if (!activeJobId) return null;
+    const jobs = readJobs();
+    const existing = jobs.find((w) => w.id === activeJobId);
+    if (!existing) {
+      setActiveJobId(null);
+      return null;
+    }
+    const trimmed = String(name || "").trim() || existing.name || defaultJobName();
+    existing.name = trimmed;
+    existing.items = serializeItems(printItems);
+    existing.settings = collectSettings();
+    existing.updatedAt = Date.now();
+    writeJobs(jobs);
+    syncActiveJobLabel();
+    syncJobActionButtons();
+    return existing;
+  }
+
+  function openJobById(id) {
+    const job = readJobs().find((w) => w.id === id);
+    if (!job) return false;
+    const restored = itemsFromPayload(job.items);
     printItems = restored.length ? restored : [makeItem("")];
-    applySettings(wall.settings || {});
-    setActiveWallId(wall.id);
+    applySettings(job.settings || {});
+    setActiveJobId(job.id);
     selectedItemId = null;
     focusItemId = printItems[0].id;
     focusField = "text";
@@ -495,13 +500,13 @@
     return true;
   }
 
-  function deleteWallById(id) {
-    const walls = readWalls().filter((w) => w.id !== id);
-    writeWalls(walls);
-    if (activeWallId === id) setActiveWallId(null);
+  function deleteJobById(id) {
+    const jobs = readJobs().filter((w) => w.id !== id);
+    writeJobs(jobs);
+    if (activeJobId === id) setActiveJobId(null);
   }
 
-  function formatWallWhen(ts) {
+  function formatJobWhen(ts) {
     const t = Number(ts) || 0;
     if (!t) return "";
     try {
@@ -516,75 +521,84 @@
     }
   }
 
-  function renderWallsList() {
-    if (!wallsList) return;
-    wallsList.innerHTML = "";
-    const walls = readWalls().slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-    if (!walls.length) {
+  function renderJobsList() {
+    if (!jobsList) return;
+    jobsList.innerHTML = "";
+    const jobs = readJobs().slice().sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    if (!jobs.length) {
       const empty = document.createElement("p");
-      empty.className = "walls-empty";
-      empty.textContent = "No saved walls yet — name this one and hit Save.";
-      wallsList.appendChild(empty);
+      empty.className = "jobs-empty";
+      empty.textContent = "No saved jobs yet — name this sheet and hit Save.";
+      jobsList.appendChild(empty);
       return;
     }
-    walls.forEach((wall) => {
-      const count = Array.isArray(wall.items)
-        ? wall.items.filter((i) => i && String(i.text || "").trim()).length
+    jobs.forEach((job) => {
+      const count = Array.isArray(job.items)
+        ? job.items.filter((i) => i && String(i.text || "").trim()).length
         : 0;
       const row = document.createElement("div");
-      row.className = "wall-row" + (wall.id === activeWallId ? " is-active" : "");
+      row.className = "job-row" + (job.id === activeJobId ? " is-active" : "");
 
-      const main = document.createElement("button");
-      main.type = "button";
-      main.className = "wall-row-main";
-      main.title = "Open wall";
+      const main = document.createElement("div");
+      main.className = "job-row-main";
       const name = document.createElement("span");
-      name.className = "wall-row-name";
-      name.textContent = wall.name || "Untitled wall";
+      name.className = "job-row-name";
+      name.textContent = job.name || "Untitled job";
       const meta = document.createElement("span");
-      meta.className = "wall-row-meta";
+      meta.className = "job-row-meta";
       meta.textContent =
         (count === 1 ? "1 code" : `${count} codes`) +
-        (wall.updatedAt ? ` · ${formatWallWhen(wall.updatedAt)}` : "");
+        (job.updatedAt ? ` · ${formatJobWhen(job.updatedAt)}` : "");
       main.appendChild(name);
       main.appendChild(meta);
-      main.addEventListener("click", () => {
-        if (openWallById(wall.id)) closeWalls();
+
+      const actions = document.createElement("div");
+      actions.className = "job-row-actions";
+
+      const loadBtn = document.createElement("button");
+      loadBtn.type = "button";
+      loadBtn.className = "btn ghost";
+      loadBtn.textContent = "Load";
+      loadBtn.title = "Load this job";
+      loadBtn.addEventListener("click", () => {
+        if (openJobById(job.id)) closeJobs();
       });
 
       const del = document.createElement("button");
       del.type = "button";
       del.className = "icon-btn danger";
-      del.title = "Delete wall";
-      del.setAttribute("aria-label", "Delete wall");
+      del.title = "Delete job";
+      del.setAttribute("aria-label", "Delete job");
       del.textContent = "✕";
-      del.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (!confirm(`Delete “${wall.name || "Untitled wall"}”?`)) return;
-        deleteWallById(wall.id);
-        renderWallsList();
-        syncActiveWallLabel();
+      del.addEventListener("click", () => {
+        if (!confirm(`Delete “${job.name || "Untitled job"}”?`)) return;
+        deleteJobById(job.id);
+        renderJobsList();
+        syncActiveJobLabel();
+        syncJobActionButtons();
       });
 
+      actions.appendChild(loadBtn);
+      actions.appendChild(del);
       row.appendChild(main);
-      row.appendChild(del);
-      wallsList.appendChild(row);
+      row.appendChild(actions);
+      jobsList.appendChild(row);
     });
   }
 
-  function openWalls() {
+  function openJobs() {
     if (!importModal.hidden) closeImport();
-    const current = activeWallRecord();
-    wallNameInput.value = current ? current.name : defaultWallName();
-    wallSaveBtn.textContent = current ? "Update" : "Save";
-    renderWallsList();
-    wallsModal.hidden = false;
-    wallNameInput.focus();
-    wallNameInput.select();
+    const current = activeJobRecord();
+    jobNameInput.value = current ? current.name : defaultJobName();
+    syncJobActionButtons();
+    renderJobsList();
+    jobsModal.hidden = false;
+    jobNameInput.focus();
+    jobNameInput.select();
   }
 
-  function closeWalls() {
-    wallsModal.hidden = true;
+  function closeJobs() {
+    jobsModal.hidden = true;
   }
 
   function syncColumnSegments() {
@@ -1560,19 +1574,28 @@
     el.addEventListener("click", closeImport);
   });
 
-  if (wallsBtn) wallsBtn.addEventListener("click", openWalls);
-  document.querySelectorAll("[data-walls-close]").forEach((el) => {
-    el.addEventListener("click", closeWalls);
+  if (jobsBtn) jobsBtn.addEventListener("click", openJobs);
+  document.querySelectorAll("[data-jobs-close]").forEach((el) => {
+    el.addEventListener("click", closeJobs);
   });
-  wallSaveBtn.addEventListener("click", () => {
-    saveNamedWall(wallNameInput.value);
-    wallSaveBtn.textContent = "Update";
-    renderWallsList();
+  jobSaveBtn.addEventListener("click", () => {
+    saveJobAsNew(jobNameInput.value);
+    jobNameInput.value = activeJobRecord()?.name || jobNameInput.value;
+    syncJobActionButtons();
+    renderJobsList();
   });
-  wallNameInput.addEventListener("keydown", (e) => {
+  jobUpdateBtn.addEventListener("click", () => {
+    const updated = updateActiveJob(jobNameInput.value);
+    if (!updated) return;
+    jobNameInput.value = updated.name;
+    syncJobActionButtons();
+    renderJobsList();
+  });
+  jobNameInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      wallSaveBtn.click();
+      if (!jobUpdateBtn.disabled) jobUpdateBtn.click();
+      else jobSaveBtn.click();
     }
   });
 
@@ -1778,9 +1801,12 @@
 
   loadSettings();
   loadItems();
-  loadActiveWallId();
-  if (activeWallId && !activeWallRecord()) setActiveWallId(null);
-  else syncActiveWallLabel();
+  loadActiveJobId();
+  if (activeJobId && !activeJobRecord()) setActiveJobId(null);
+  else {
+    syncActiveJobLabel();
+    syncJobActionButtons();
+  }
   syncColumnSegments();
   syncOrientSegments();
   syncDocumentClasses();

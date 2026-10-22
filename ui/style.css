@@ -272,8 +272,7 @@ body {
   flex-shrink: 0;
 }
 
-.print-kicker,
-.print-kicker-btn {
+.print-kicker {
   margin: 0 0 4px;
   font-size: 11px;
   font-weight: 600;
@@ -282,30 +281,7 @@ body {
   color: var(--accent);
 }
 
-.print-kicker-btn {
-  display: inline-block;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--accent);
-  border-radius: 4px;
-}
-
-.print-kicker-btn:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.print-kicker-btn:focus-visible {
-  outline: 2px solid rgba(47, 93, 80, 0.35);
-  outline-offset: 3px;
-}
-
-.print-wall-name {
+.print-job-name {
   margin: 0 0 2px;
   font-size: 12px;
   font-weight: 600;
@@ -1628,22 +1604,23 @@ body {
   align-self: flex-start;
 }
 
-.walls-card {
-  width: min(520px, 100%);
+.jobs-card {
+  width: min(560px, 100%);
 }
 
-.wall-save-row {
+.job-save-row {
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.wall-save-row .toolbar-input {
-  flex: 1;
+.job-save-row .toolbar-input {
+  flex: 1 1 180px;
   min-width: 0;
 }
 
-.walls-list {
+.jobs-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1652,7 +1629,7 @@ body {
   padding: 2px 0;
 }
 
-.walls-empty {
+.jobs-empty {
   margin: 0;
   padding: 14px 12px;
   border-radius: 12px;
@@ -1661,7 +1638,7 @@ body {
   font-size: 13px;
 }
 
-.wall-row {
+.job-row {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 6px;
@@ -1670,35 +1647,23 @@ body {
   background: #fff;
   border: 1px solid transparent;
   box-shadow: var(--shadow-soft);
-  padding: 4px 4px 4px 0;
+  padding: 8px 8px 8px 12px;
 }
 
-.wall-row.is-active {
+.job-row.is-active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px rgba(47, 93, 80, 0.14);
 }
 
-.wall-row-main {
+.job-row-main {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 2px;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: 8px 12px;
-  border-radius: 10px;
-  cursor: pointer;
   min-width: 0;
-  color: inherit;
-  font: inherit;
 }
 
-.wall-row-main:hover {
-  background: #f7f3ec;
-}
-
-.wall-row-name {
+.job-row-name {
   font-weight: 650;
   font-size: 14px;
   color: var(--ink);
@@ -1708,9 +1673,15 @@ body {
   white-space: nowrap;
 }
 
-.wall-row-meta {
+.job-row-meta {
   font-size: 12px;
   color: var(--muted);
+}
+
+.job-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .modal-actions {

@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=22" />
+  <link rel="stylesheet" href="style.css?v=23" />
 </head>
 <body>
   <!-- Scan mode (Ctrl+Shift+B) -->
@@ -27,13 +27,12 @@
   <main class="print-app view" id="viewPrint" hidden>
     <header class="print-chrome no-print">
       <div class="print-brand">
-        <button type="button" class="print-kicker-btn" id="wallsBtn" title="Saved walls">
-          Print layout
-        </button>
-        <p class="print-wall-name" id="activeWallLabel" hidden></p>
+        <p class="print-kicker">Print layout</p>
+        <p class="print-job-name" id="activeJobLabel" hidden></p>
         <h1 class="print-title" id="printMeta">Your sheet</h1>
       </div>
       <div class="print-chrome-actions">
+        <button type="button" class="btn ghost" id="jobsBtn">Jobs</button>
         <button type="button" class="btn ghost" id="importBtn">Import</button>
         <button type="button" class="btn ghost" data-hide>Hide</button>
         <button type="button" class="btn primary" id="printBtn">
@@ -224,32 +223,33 @@
     </div>
   </div>
 
-  <!-- Saved walls (hidden: open via Print layout kicker or Ctrl+Shift+W) -->
-  <div class="modal no-print" id="wallsModal" hidden>
-    <div class="modal-backdrop" data-walls-close></div>
-    <div class="modal-card walls-card" role="dialog" aria-labelledby="wallsHeading">
+  <!-- Jobs dialog -->
+  <div class="modal no-print" id="jobsModal" hidden>
+    <div class="modal-backdrop" data-jobs-close></div>
+    <div class="modal-card jobs-card" role="dialog" aria-labelledby="jobsHeading">
       <header class="modal-head">
         <div>
           <p class="modal-kicker">This browser</p>
-          <h2 id="wallsHeading">Saved walls</h2>
+          <h2 id="jobsHeading">Jobs</h2>
         </div>
-        <button type="button" class="close" data-walls-close aria-label="Close">×</button>
+        <button type="button" class="close" data-jobs-close aria-label="Close">×</button>
       </header>
       <p class="modal-help">
-        Save a wall and open it later on this device. Edits keep auto-updating the open wall.
+        Save the current sheet as a job, update the open one, or load a job later on this device.
       </p>
-      <div class="wall-save-row">
-        <input type="text" id="wallNameInput" class="toolbar-input" placeholder="Name this wall" maxlength="80" />
-        <button type="button" class="btn primary" id="wallSaveBtn">Save</button>
+      <div class="job-save-row">
+        <input type="text" id="jobNameInput" class="toolbar-input" placeholder="Name this job" maxlength="80" />
+        <button type="button" class="btn primary" id="jobSaveBtn">Save</button>
+        <button type="button" class="btn ghost" id="jobUpdateBtn" disabled>Update</button>
       </div>
-      <div class="walls-list" id="wallsList"></div>
+      <div class="jobs-list" id="jobsList"></div>
       <footer class="modal-actions">
-        <button type="button" class="btn ghost" data-walls-close>Done</button>
+        <button type="button" class="btn ghost" data-jobs-close>Done</button>
       </footer>
     </div>
   </div>
 
   <script src="vendor/JsBarcode.code128.min.js"></script>
-  <script src="app.js?v=22"></script>
+  <script src="app.js?v=23"></script>
 </body>
 </html>
