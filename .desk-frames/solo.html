@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solo desk-frame sketch</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,650&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Space+Grotesk:wght@500;600;700&family=DM+Sans:opsz,wght@9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #c4b9ab;
+      font-family: Figtree, "Segoe UI", sans-serif;
+      color: #16140f;
+    }
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 36px 24px 48px;
+      gap: 14px;
+    }
+    .meta { width: min(460px, 92vw); }
+    .option-name {
+      margin: 0;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+    .option-note {
+      margin: 4px 0 0;
+      font-size: 14px;
+      color: #4a453e;
+      line-height: 1.35;
+    }
+    .frame {
+      width: min(460px, 92vw);
+      background: linear-gradient(145deg, #3a342e, #2a2622 40%, #1c1916);
+      padding: 14px;
+      border-radius: 3px;
+      box-shadow: 0 22px 40px rgba(40, 28, 16, 0.28);
+    }
+    .mat { background: #efeae2; padding: 12px; }
+    .sheet {
+      width: 100%;
+      aspect-ratio: 210 / 297;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .sheet-title { margin: 0; line-height: 1.15; }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      flex: 1;
+      min-height: 0;
+    }
+    .cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      min-height: 0;
+      text-align: center;
+    }
+    .cell-title { margin: 0; font-weight: 600; line-height: 1.15; }
+    .bars {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+    }
+    .bars svg { height: 100%; width: auto; max-width: 100%; display: block; }
+    .label {
+      margin: 0;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      letter-spacing: 0.03em;
+      text-align: center;
+    }
+    .foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+    }
+
+    .now .sheet { background: #fffcf7; padding: 7% 7% 5%; gap: 4%; }
+    .now .sheet-title {
+      font-family: Fraunces, Georgia, serif;
+      font-size: 18px;
+      font-weight: 650;
+      padding-bottom: 3%;
+      border-bottom: 1px solid #ddd6ca;
+    }
+    .now .grid { gap: 4% 5%; }
+    .now .cell {
+      background: #f6f1e8;
+      border-radius: 4px;
+      padding: 6% 5%;
+      gap: 4px;
+    }
+    .now .cell-title { font-size: 13px; color: #1c1915; }
+    .now .bars { height: 38%; }
+    .now .label { font-size: 11px; color: #6e675e; }
+    .now .foot { font-size: 10px; color: #8a8378; margin-top: 2%; }
+
+    .gallery .sheet { background: #ffffff; padding: 9% 9% 7%; gap: 6%; }
+    .gallery .eyebrow {
+      margin: 0 0 6px;
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #8a8a8a;
+    }
+    .gallery .sheet-title {
+      font-family: Newsreader, Georgia, serif;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      color: #111;
+    }
+    .gallery .grid { gap: 7% 8%; align-content: center; }
+    .gallery .cell { background: transparent; padding: 0; gap: 7px; }
+    .gallery .cell-title {
+      font-family: Newsreader, Georgia, serif;
+      font-size: 15px;
+      font-weight: 500;
+      color: #111;
+    }
+    .gallery .bars { height: 34%; }
+    .gallery .label { font-size: 11px; color: #777; letter-spacing: 0.06em; }
+    .gallery .foot {
+      font-size: 10px;
+      color: #a3a3a3;
+      border-top: 1px solid #ececec;
+      padding-top: 3%;
+      margin-top: auto;
+    }
+
+    .soft .sheet { background: #f7f8f6; padding: 8% 7% 6%; gap: 5%; }
+    .soft .sheet-title {
+      font-family: "DM Sans", Figtree, sans-serif;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #1a1f1c;
+    }
+    .soft .grid {
+      gap: 0;
+      border-top: 1px solid #cfd5cf;
+      border-left: 1px solid #cfd5cf;
+    }
+    .soft .cell {
+      background: transparent;
+      border-right: 1px solid #cfd5cf;
+      border-bottom: 1px solid #cfd5cf;
+      padding: 8% 6%;
+      gap: 6px;
+    }
+    .soft .cell-title {
+      font-family: "DM Sans", Figtree, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a1f1c;
+    }
+    .soft .bars { height: 36%; }
+    .soft .label { font-size: 11px; color: #6a726c; }
+    .soft .foot { font-size: 10px; color: #8a928b; margin-top: 3%; }
+
+    .studio .sheet { background: #f4f1eb; padding: 8% 8% 6%; gap: 5%; }
+    .studio .mast {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 12px;
+      border-bottom: 2.5px solid #111;
+      padding-bottom: 3%;
+    }
+    .studio .sheet-title {
+      font-family: "Space Grotesk", Figtree, sans-serif;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      text-transform: uppercase;
+      color: #111;
+      max-width: 70%;
+    }
+    .studio .mast-mark {
+      font-family: "IBM Plex Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #111;
+      white-space: nowrap;
+      padding-bottom: 2px;
+    }
+    .studio .grid { gap: 6% 7%; }
+    .studio .cell {
+      background: transparent;
+      align-items: stretch;
+      padding: 0;
+      gap: 5px;
+    }
+    .studio .cell-title {
+      font-family: "Space Grotesk", Figtree, sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      text-align: left;
+      color: #111;
+      width: 100%;
+    }
+    .studio .bars { height: 42%; justify-content: flex-start; }
+    .studio .label {
+      font-size: 11px;
+      color: #111;
+      text-align: left;
+      border-bottom: 1.5px solid #111;
+      padding-bottom: 3px;
+      align-self: flex-start;
+      min-width: 72%;
+    }
+    .studio .foot {
+      font-size: 10px;
+      color: #111;
+      margin-top: auto;
+      padding-top: 3%;
+      border-top: 1px solid #111;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <p class="option-name" id="name"></p>
+    <p class="option-note" id="note"></p>
+  </div>
+  <div class="frame" id="frameWrap">
+    <div class="mat"><article class="sheet" id="sheet"></article></div>
+  </div>
+  <script src="../ui/vendor/JsBarcode.code128.min.js"></script>
+  <script>
+    const META = {
+      now: { name: "A · Now", note: "Today’s warm cream tiles. Familiar, a bit soft — the current ink on the page.", cls: "now" },
+      gallery: { name: "B · Gallery", note: "White paper, no tile fills, quiet type. Reads like a small museum print.", cls: "gallery" },
+      soft: { name: "C · Soft Grid", note: "Cool paper and hairline cells. Architectural, tidy, no cream fill.", cls: "soft" },
+      studio: { name: "D · Studio", note: "Bold masthead, left-aligned codes, underline rules. Poster energy for a desk frame.", cls: "studio" },
+    };
+    const items = [
+      { title: "Blue widget", text: "WIDGET-4401" },
+      { title: "Large spare", text: "WIDGET-4401-BLUE" },
+      { title: "Bin 18", text: "BIN-18" },
+      { title: "Return lane", text: "SKU-1003" },
+    ];
+    const style = new URLSearchParams(location.search).get("s") || "gallery";
+    const meta = META[style] || META.gallery;
+    document.body.classList.add(meta.cls);
+    document.getElementById("name").textContent = meta.name;
+    document.getElementById("note").textContent = meta.note;
+    const sheet = document.getElementById("sheet");
+
+    function moduleWidth(len, maxAcross) {
+      const modules = Math.max(40, 11 * (len + 3) + 2);
+      return Math.max(0.55, Math.min(2.1, Math.round((maxAcross / modules) * 100) / 100));
+    }
+
+    if (style === "gallery") {
+      const eye = document.createElement("p");
+      eye.className = "eyebrow";
+      eye.textContent = "Barcode Wall";
+      sheet.appendChild(eye);
+    }
+    if (style === "studio") {
+      const mast = document.createElement("div");
+      mast.className = "mast";
+      const title = document.createElement("p");
+      title.className = "sheet-title";
+      title.textContent = "Shelf A";
+      const mark = document.createElement("span");
+      mark.className = "mast-mark";
+      mark.textContent = "Ref · 01";
+      mast.append(title, mark);
+      sheet.appendChild(mast);
+    } else {
+      const title = document.createElement("p");
+      title.className = "sheet-title";
+      title.textContent = "Shelf A";
+      sheet.appendChild(title);
+    }
+
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    items.forEach((item) => {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      const t = document.createElement("p");
+      t.className = "cell-title";
+      t.textContent = item.title;
+      const bars = document.createElement("div");
+      bars.className = "bars";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      bars.appendChild(svg);
+      const label = document.createElement("p");
+      label.className = "label";
+      label.textContent = item.text;
+      cell.append(t, bars, label);
+      grid.appendChild(cell);
+      JsBarcode(svg, item.text, {
+        format: "CODE128",
+        displayValue: false,
+        margin: style === "gallery" ? 0 : 2,
+        height: style === "studio" ? 110 : 100,
+        width: moduleWidth(item.text.length, style === "studio" ? 92 : 78),
+        background: "transparent",
+        lineColor: "#111111",
+      });
+      svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    });
+    sheet.appendChild(grid);
+    const foot = document.createElement("div");
+    foot.className = "foot";
+    if (style === "studio") foot.innerHTML = "<span>Barcode Wall</span><span>01 / 01</span>";
+    else if (style === "gallery") foot.innerHTML = "<span>Warehouse desk</span><span>1 / 1</span>";
+    else foot.innerHTML = "<span>Warehouse</span><span>8 Nov 2026 · 1 / 1</span>";
+    sheet.appendChild(foot);
+  </script>
+</body>
+</html>

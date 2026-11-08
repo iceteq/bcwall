@@ -6,4 +6,5 @@ server
 BarCodeAnywhere.ahk
 Run.bat
 .preview-tiles
+.desk-frames
 public
